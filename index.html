@@ -15,10 +15,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Unbounded:wght@500;700&display=swap" rel="stylesheet">
+<script>
+/* Apply the saved light/dark choice before the page paints. */
+(function(){ try{ const t=localStorage.getItem('govori-theme'); if(t==='light'||t==='dark') document.documentElement.dataset.theme=t; }catch(e){} })();
+</script>
 <style>
 :root{
-  --bg:#F3F6FC; --surface:#FFFFFF; --ink:#13204A; --muted:#56627F; --line:#D3DAEC;
-  --cobalt:#2443B5; --cobalt-ink:#FFFFFF; --cobalt-soft:#DFE6F9; --amber:#B86E0A; --amber-soft:#FBEBD2;
+  --bg:#DCEBFC; --surface:#F2F8FF; --ink:#13204A; --muted:#475576; --line:#B8CEEC;
+  --cobalt:#2443B5; --cobalt-ink:#FFFFFF; --cobalt-soft:#C8DBF6; --amber:#B86E0A; --amber-soft:#FBEBD2;
   --good:#1D7448; --good-soft:#DDF2E6; --bad:#B3261E; --bad-soft:#FBE3E1;
   --display:'Unbounded', 'Golos Text', system-ui, sans-serif;
   --body:'Golos Text', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -29,15 +33,15 @@
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --bg:#0C1430; --surface:#152049; --ink:#E9EEFB; --muted:#9DA9CC; --line:#2A3772;
-    --cobalt:#8099F5; --cobalt-ink:#0C1430; --cobalt-soft:#22306B; --amber:#F2B24F; --amber-soft:#3A2D16;
+    --bg:#0A1430; --surface:#12224A; --ink:#E9EEFB; --muted:#9DA9CC; --line:#253A70;
+    --cobalt:#8099F5; --cobalt-ink:#0A1430; --cobalt-soft:#1C2F66; --amber:#F2B24F; --amber-soft:#3A2D16;
     --good:#62C891; --good-soft:#163B2A; --bad:#F38B82; --bad-soft:#44201E;
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#0C1430; --surface:#152049; --ink:#E9EEFB; --muted:#9DA9CC; --line:#2A3772;
-  --cobalt:#8099F5; --cobalt-ink:#0C1430; --cobalt-soft:#22306B; --amber:#F2B24F; --amber-soft:#3A2D16;
+  --bg:#0A1430; --surface:#12224A; --ink:#E9EEFB; --muted:#9DA9CC; --line:#253A70;
+  --cobalt:#8099F5; --cobalt-ink:#0A1430; --cobalt-soft:#1C2F66; --amber:#F2B24F; --amber-soft:#3A2D16;
   --good:#62C891; --good-soft:#163B2A; --bad:#F38B82; --bad-soft:#44201E;
   color-scheme:dark;
 }
@@ -80,6 +84,9 @@ nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surfa
 .btn:disabled{opacity:.5;cursor:default}
 .icon-btn{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--surface);display:inline-grid;place-items:center;flex:none;padding:0}
 .icon-btn svg{width:20px;height:20px;fill:var(--cobalt)}
+.theme-btn .sun{display:none}
+.theme-btn.is-dark .sun{display:block}
+.theme-btn.is-dark .moon{display:none}
 .bar{height:8px;border-radius:99px;background:var(--cobalt-soft);overflow:hidden}
 .bar>i{display:block;height:100%;background:var(--cobalt);border-radius:99px}
 .muted{color:var(--muted)}
@@ -221,6 +228,10 @@ details summary{list-style-position:inside}
   <button class="brand" data-go="home" aria-label="Говори home">Говори</button>
   <span class="chip streak" id="streakChip" title="Day streak">🔥 0</span>
   <span class="chip" id="xpChip" title="Total XP">0 XP</span>
+  <button class="icon-btn theme-btn" id="themeBtn" type="button" aria-label="Switch to dark mode" title="Switch to dark mode">
+    <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 14.5A9 9 0 0 1 9.5 3a9 9 0 1 0 11.5 11.5z"/></svg>
+    <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M11 1h2v3h-2zM11 20h2v3h-2zM1 11h3v2H1zM20 11h3v2h-3zM4.2 2.8l2.1 2.1-1.4 1.4-2.1-2.1zM17.7 16.3l2.1 2.1-1.4 1.4-2.1-2.1zM2.8 19.8l2.1-2.1 1.4 1.4-2.1 2.1zM16.3 6.3l2.1-2.1 1.4 1.4-2.1 2.1z"/></svg>
+  </button>
 </div></header>
 <main id="app" tabindex="-1"></main>
 <nav class="tabs" aria-label="Sections"><div class="tabs-in">
@@ -437,6 +448,23 @@ function save(){
   try{ localStorage.setItem('govori-state', JSON.stringify(state)); }catch(e){}
   updateChips();
 }
+/* Light/dark theme toggle. Without a saved choice it follows the system setting. */
+const darkMQ = window.matchMedia('(prefers-color-scheme: dark)');
+function isDark(){ const t=document.documentElement.dataset.theme; return t ? t==='dark' : darkMQ.matches; }
+function syncThemeUI(){
+  const dark=isDark(), btn=document.getElementById('themeBtn');
+  if(btn){ btn.classList.toggle('is-dark',dark); const l=dark?'Switch to light mode':'Switch to dark mode'; btn.setAttribute('aria-label',l); btn.title=l; }
+  const meta=document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.content=getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+}
+function setTheme(t){
+  document.documentElement.dataset.theme=t;
+  try{ localStorage.setItem('govori-theme',t); }catch(e){}
+  syncThemeUI();
+}
+document.getElementById('themeBtn').addEventListener('click',()=>setTheme(isDark()?'light':'dark'));
+darkMQ.addEventListener('change',syncThemeUI);
+syncThemeUI();
 function getKey(){ try{ return localStorage.getItem('govori-key')||''; }catch(e){ return ''; } }
 function setKey(k){ try{ if(k) localStorage.setItem('govori-key',k); else localStorage.removeItem('govori-key'); }catch(e){} }
 function rollDay(){ const t=todayKey(); if(state.todayDate!==t){ state.todayDate=t; state.todayXp=0; } }
