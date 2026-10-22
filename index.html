@@ -70,7 +70,7 @@ p{margin:0 0 12px}
 .section{margin-top:30px}
 
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
-.tabs-in{max-width:760px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
+.tabs-in{max-width:760px;margin:0 auto;display:grid;grid-template-columns:repeat(6,1fr)}
 .tab{background:none;border:0;padding:10px 4px 9px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12.5px;font-weight:600;color:var(--muted)}
 .tab .g{font-family:var(--display);font-size:18px;line-height:1.1}
 .tab[aria-current="page"]{color:var(--cobalt)}
@@ -92,6 +92,14 @@ nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surfa
 .muted{color:var(--muted)}
 .ru{font-weight:600}
 .tr{color:var(--muted);font-size:14.5px;font-style:italic}
+.ph{color:var(--muted);font-size:.86em;font-style:italic;font-weight:400;white-space:normal}
+.wcard .big{font-family:var(--display);font-size:32px;line-height:1.15}
+.wcard .tr{font-size:16px}
+.wblock{border-top:1px solid var(--line);padding-top:14px;margin-top:14px}
+.wblock .lbl{font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.wblock .ruline{font-size:20px;font-weight:600}
+.say-it{display:flex;gap:14px;align-items:center;margin-top:12px}
+.field.col{flex-direction:column;align-items:stretch}
 .tag{display:inline-block;font-size:13px;font-weight:600;padding:2px 9px;border-radius:99px;background:var(--cobalt-soft);color:var(--ink)}
 .done-tag{background:var(--good-soft);color:var(--good)}
 
@@ -239,6 +247,7 @@ details summary{list-style-position:inside}
   <button class="tab" data-go="sounds"><span class="g">Аа</span>Sounds</button>
   <button class="tab" data-go="grammar"><span class="g">Я</span>Grammar</button>
   <button class="tab" data-go="talk"><span class="g">Да!</span>Talk</button>
+  <button class="tab" data-go="words"><span class="g">Сл</span>Words</button>
   <button class="tab" data-go="review"><span class="g">↻</span>Review</button>
 </div></nav>
 <script>
@@ -401,7 +410,102 @@ function translit(s){
     return ch !== low && t ? t[0].toUpperCase() + t.slice(1) : t;
   });
 }
-function norm(s){ return String(s || '').toLowerCase().replace(/ё/g,'е').replace(/[’']/g,'').replace(/[^\p{L}\p{N}\s]/gu,' ').replace(/\s+/g,' ').trim(); }
+/* Pronunciation guide: English-style respelling, e.g. привет -> pree-VYET.
+   Capitals mark stress when it's known: from an accent mark (U+0301), ё, or the STRESS list below.
+   Unknown words are respelled as written, without vowel reduction. */
+const STRESS = new Map(('амЕрики Аня билЕт болИт бЫло вагОн вЕсело вИжу водА вОду вокзАле врачА вчерА выздорАвливайте выходнЫе галИна '+
+ 'говорИли говорИм говорИт говорИте говорИть говорИшь говорЮ говорЯт головА гОрод гОроде готОвлю гулЯл гулЯть давАй дАйте далекО делА '+
+ 'дЕлает дЕлаешь дЕлал дЕлала дЕлали дЕлать дЕлаю дмИтрий дОма дОму дОрого дУмаю едА женА живУ звонИть звонЮ звонЯт зимА знакОмство '+
+ 'знАют зовУт извинИте Или Имя кАждую кАртой кАтя кафЕ квартИре килогрАмм кнИга кнИгу когО кОфе крАткое лАмпа люблЮ магазИне максИм '+
+ 'мАма мАме мАмой мАму мАмы машИна менЯ метрО мОжно молокО мОре москвЫ моЯ мУзыка мУзыку мЯгкий налЕво налИчными напрАво негО недЕлю '+
+ 'недЕля нормАльно обрАтно одИн окнО Ольга онА онИ онО Очень падежИ пАпа пАрке плОхо плЯже подъЕзд пОезд понимАем понимАть привЕт '+
+ 'приЯтно прЯмо рабОта рабОте россИи россИю россИя рЫба рЫнке скОлько слУшать смотрЕл смотрЕть смотрИт собОй сосЕд спасИбо стОит '+
+ 'студЕнт студЕнта тебЯ температУра тудА Ужин Утро фОто ходИли хОчешь читАем читАет читАете читАешь читАл читАла читАли читАло читАть '+
+ 'читАю читАют шкОла шкОле шкОлу Это Яблоки хорошО зАвтра когдА почемУ тОже тОлько понимАю понимАешь рУсский англИйский немнОго мнОго '+
+ 'покА большОе дОброе утрА вЕчер дОбрый хочУ могУ бУду былА бЫли тебЕ сестрА подрУга собАка дЕньги нУжно нАдо нельзЯ прАвда всегдА '+
+ 'никогдА иногдА чАсто кудА откУда котОрый человЕк врЕмя слОво рабОтаю учУсь учИться повторИте мЕдленнее простИте спокОйной нОчи '+
+ 'свидАния сдЕлать увИдимся хорОшего удАчи вкУсно нрАвится лЮбишь интерЕсно мОжет сЕйчас вОт').split(' ').filter(Boolean)
+ .map(w=>[w.toLowerCase(), w.replace(/[АЕИОУЫЭЮЯ]/, c=>c.toLowerCase()+'́').toLowerCase()]));
+STRESS.delete('сейчас'); STRESS.delete('вот');
+const PH_SPECIAL = {что:'shto',чтобы:'SHTO-bih',конечно:'ka-NYESH-nuh',скучно:'SKOOSH-nuh',сегодня:'see-VOD-nya',его:'yee-VO',
+  ничего:'nee-chee-VO',чего:'chee-VO',пожалуйста:'pa-ZHAH-luh-stuh',здравствуйте:'ZDRAST-vooy-tye',здравствуй:'ZDRAST-vooy',
+  сейчас:'see-CHAHS',солнце:'SON-tse',счастье:'SHCHAHS-tye',извините:'eez-vee-NEE-tye'};
+const PH_V='аеёиоуыэюя';
+const PH_C={б:'b',в:'v',г:'g',д:'d',ж:'zh',з:'z',к:'k',л:'l',м:'m',н:'n',п:'p',р:'r',с:'s',т:'t',ф:'f',х:'kh',ц:'ts',ч:'ch',ш:'sh',щ:'shch'};
+const PH_DEVOICE={б:'п',в:'ф',г:'к',д:'т',ж:'ш',з:'с'}, PH_VOICE={п:'б',ф:'в',к:'г',т:'д',ш:'ж',с:'з'};
+function phonWord(raw){
+  let w=raw.toLowerCase();
+  const plain=w.replace(/́/g,'');
+  if(PH_SPECIAL[plain]) return PH_SPECIAL[plain];
+  if(plain==='ь') return 'soft sign'; if(plain==='ъ') return 'hard sign';
+  if(!/́/.test(w) && !w.includes('ё') && STRESS.has(plain)) w=STRESS.get(plain);
+  // stress is tracked as "the Nth vowel", so the spelling rules below can change letters freely
+  let stressV=-1, nv=0;
+  for(const ch of w){ if(ch==='́'){ if(nv) stressV=nv-1; } else if(PH_V.includes(ch)){ if(ch==='ё'&&stressV<0) stressV=nv; nv++; } }
+  let t=w.replace(/́/g,'');
+  t=t.replace(/т?ься$|тся$/,'ца').replace(/[сз]ч/g,'щ').replace(/вств/g,'ств').replace(/стн/g,'сн').replace(/здн/g,'зн');
+  if(/[ое]го$/.test(t) && t.length>3 && !/^(не)?(мн|дор|стр)ого$/.test(t)) t=t.slice(0,-2)+'во';
+  const L=[...t].filter(c=>/[а-яё]/.test(c));
+  const vless='кпстфхцчшщ', vced='бгджз';
+  for(let i=L.length-1;i>=0;i--){ // voicing: devoice at the end and before voiceless, voice before voiced
+    const nx=L[i+1]==='ь'?L[i+2]:L[i+1];
+    if(PH_DEVOICE[L[i]] && (nx===undefined || vless.includes(nx))) L[i]=PH_DEVOICE[L[i]];
+    else if(PH_VOICE[L[i]] && nx && vced.includes(nx)) L[i]=PH_VOICE[L[i]];
+  }
+  for(let i=L.length-1;i>0;i--) if(L[i]===L[i-1] && !PH_V.includes(L[i])) L.splice(i,1);   // сс -> с
+  const vIdx=L.map((c,i)=>PH_V.includes(c)?i:-1).filter(i=>i>=0);
+  if(!vIdx.length) return L.map(c=>PH_C[c]||(c==='й'?'y':c==='ь'?'’':'')).join('');
+  // syllables: one consonant goes to the next vowel; in a cluster only the last one does
+  // (two if they are a consonant + р/л, like тр or кл). й and ь stay behind.
+  const cuts=[];
+  for(let k=0;k<vIdx.length-1;k++){
+    const a=vIdx[k], b=vIdx[k+1], cl=L.slice(a+1,b);
+    const cons=cl.filter(c=>!'ьъ'.includes(c));
+    let take=Math.min(1,cons.length);
+    if(cons.length>=2 && 'рл'.includes(cons[cons.length-1]) && !'рлмнй'.includes(cons[cons.length-2])) take=2;
+    if(cons[cons.length-1]==='й') take=0;
+    let cut=b, got=0;
+    while(cut>a+1 && got<take){ cut--; if(!'ьъ'.includes(L[cut])) got++; }
+    if(L[cut]==='ь'||L[cut]==='ъ') cut++;
+    cuts.push(cut);
+  }
+  const known=stressV>=0, multi=vIdx.length>1;
+  const sylls=[]; let start=0;
+  [...cuts,L.length].forEach((end,si)=>{
+    let out='';
+    for(let i=start;i<end;i++){
+      const c=L[i], prev=L[i-1], nx=L[i+1];
+      if(PH_C[c]){ out+=PH_C[c]; continue; }
+      if(c==='ь'){ if(!(nx&&'еёюяи'.includes(nx))) out+='’'; continue; }
+      if(c==='ъ') continue;
+      if(c==='й'){ if(!(prev&&'иы'.includes(prev))) out+='y'; continue; }
+      const hard=prev&&'жшц'.includes(prev), soft=prev&&'чщ'.includes(prev);
+      const yStart=!prev || PH_V.includes(prev) || 'ьъ'.includes(prev);
+      const stressed = known ? si===stressV : true;
+      const pre = si===stressV-1 || i===0;
+      const final = i===L.length-1;
+      let v;
+      if(c==='а'||c==='о') v = stressed ? (c==='а'?'ah':'o') : (soft?'ee':pre?'a':'uh');
+      else if(c==='у') v='oo';
+      else if(c==='ы') v='ih';
+      else if(c==='э') v='e';
+      else if(c==='и') v = hard?'ih':'ee';
+      else if(c==='ё') v = (hard||soft)?'o':'yo';
+      else if(c==='ю') v = hard?'oo':'yoo';
+      else if(c==='е') v = stressed||final ? ((hard||soft)?'e':'ye') : (hard?'ih':yStart?'yee':'ee');
+      else v = stressed||final ? 'ya' : (yStart?'yee':'ee');   // я
+      out+=v;
+    }
+    out=out.replace(/ahy(’?)$/,'ai$1');
+    sylls.push(known&&multi&&si===stressV?out.toUpperCase():out);
+    start=end;
+  });
+  return sylls.join('-');
+}
+function phon(s){
+  return String(s||'').replace(/[А-яЁё́]+/g, phonWord).replace(/[«»]/g,'');
+}
+function norm(s){ return String(s || '').replace(/\u0301/g,'').toLowerCase().replace(/ё/g,'е').replace(/[’']/g,'').replace(/[^\p{L}\p{N}\s]/gu,' ').replace(/\s+/g,' ').trim(); }
 function lev(a,b){
   const m=a.length,n=b.length; if(!m) return n; if(!n) return m;
   let prev=Array.from({length:n+1},(_,i)=>i);
@@ -437,7 +541,7 @@ const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platfor
 const isStandalone = window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone===true;
 
 /* ============ State ============ */
-const DEFAULT_STATE = {xp:0,streak:0,lastDay:null,todayXp:0,todayDate:null,goal:30,letters:{},grammar:{},talks:{},srs:[],slow:true,translit:true,checker:'auto',model:'',updatedAt:0};
+const DEFAULT_STATE = {xp:0,streak:0,lastDay:null,todayXp:0,todayDate:null,goal:30,letters:{},grammar:{},talks:{},srs:[],words:[],slow:true,translit:true,checker:'auto',model:'',updatedAt:0};
 let state = loadLocal();
 function loadLocal(){
   try{ const raw=localStorage.getItem('govori-state'); if(raw) return {...DEFAULT_STATE, ...JSON.parse(raw)}; }catch(e){}
@@ -745,10 +849,44 @@ function route(){
   else if(v==='grammar') renderGrammar();
   else if(v==='talk') session ? renderSession() : renderTalk();
   else if(v==='review') renderReview();
+  else if(v==='words') renderWords();
   else if(v==='settings') renderSettings();
   else renderHome();
   window.scrollTo(0,0);
 }
+
+/* Pronunciation guide everywhere: after anything renders, put [pree-VYET] after Russian text
+   that doesn't already have its own guide line (.tr) next to it. */
+const PH_SKIP='.ph,.tr,[data-noph],input,textarea,select,script,style,svg,.kbd,.lt,.letter-big,nav,header';
+const PH_RUN=/[А-яЁё\u0301]+(?:[\s,.!?…—–-]+[А-яЁё\u0301]+)*[!?.…]?/g;
+function hasOwnGuide(el){ for(let n=el,d=0;n&&d<3;n=n.parentElement,d++){ if(n.nextElementSibling&&n.nextElementSibling.classList.contains('tr')) return true; if(n.querySelector(':scope > .tr')) return true; } return false; }
+function annotateRu(root){
+  if(!state.translit || !root.closest || !root.closest('#app,.sheet-wrap')) return;
+  const nodes=[], tw=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+  if(root.nodeType===3) nodes.push(root);
+  while(tw.nextNode()) nodes.push(tw.currentNode);
+  for(const n of nodes){
+    const el=n.parentElement;
+    if(!el || !/[А-яЁё]/.test(n.nodeValue) || el.closest(PH_SKIP) || hasOwnGuide(el)) continue;
+    if(n.nextSibling && n.nextSibling.nodeType===1 && n.nextSibling.classList.contains('ph')) continue;
+    const text=n.nodeValue, frag=document.createDocumentFragment(); let last=0, m;
+    PH_RUN.lastIndex=0;
+    while((m=PH_RUN.exec(text))){
+      const end=m.index+m[0].length;
+      frag.append(text.slice(last,end));
+      const sp=document.createElement('span'); sp.className='ph'; sp.textContent=' ['+phon(m[0]).replace(/[.!?…]+$/,'')+']';
+      frag.append(sp); last=end;
+    }
+    frag.append(text.slice(last));
+    n.replaceWith(frag);
+  }
+}
+const phObs=new MutationObserver(recs=>{
+  phObs.disconnect();
+  for(const r of recs) for(const n of r.addedNodes){ if(n.nodeType===1) annotateRu(n); else if(n.nodeType===3&&n.parentElement) annotateRu(n.parentElement); }
+  phObs.observe(document.body,{childList:true,subtree:true});
+});
+phObs.observe(document.body,{childList:true,subtree:true});
 
 /* ============ Setup + Settings ============ */
 function keyCardHTML(compact){
@@ -790,7 +928,7 @@ function renderSettings(){
   <section class="section panel">
     <h2>Practice</h2>
     <label class="switch"><span>Slow Russian speech<br><span class="muted" style="font-size:14px">Easier to follow while you’re starting out</span></span><input type="checkbox" id="setSlow" ${state.slow?'checked':''}></label>
-    <label class="switch"><span>Show Latin letters under Russian<br><span class="muted" style="font-size:14px">Turn this off once Cyrillic feels natural</span></span><input type="checkbox" id="setTr" ${state.translit?'checked':''}></label>
+    <label class="switch"><span>Show how to pronounce Russian<br><span class="muted" style="font-size:14px">Like pree-VYET. Capitals mark the stressed part. Turn this off once Cyrillic feels natural</span></span><input type="checkbox" id="setTr" ${state.translit?'checked':''}></label>
     <div class="switch"><span>Daily goal</span><span class="seg" id="goalSeg">${[20,30,50].map(n=>`<button aria-pressed="${state.goal===n}" data-g="${n}">${n} XP</button>`).join('')}</span></div>
     <div class="switch"><span>Pronunciation checks<br><span class="muted" style="font-size:14px">AI listening is more accurate and works on iPhone, but each check uses one free request</span></span><span class="seg" id="chkSeg">${[['auto','Auto'],['browser','Browser'],['ai','AI']].map(([v,l])=>`<button aria-pressed="${state.checker===v}" data-c="${v}" ${v==='browser'&&!SR?'disabled':''}>${l}</button>`).join('')}</span></div>
   </section>
@@ -903,7 +1041,7 @@ function openLetter(i){
     <dl class="kv" style="margin:16px 0">
       <dt>Name</dt><dd><span class="ru">${L.name}</span></dd>
       <dt>Sound</dt><dd>${L.sound}</dd>
-      <dt>Example</dt><dd><span class="ru" style="font-size:22px">${L.word}</span> <span class="tr">${translit(L.word)}</span><br>${L.mean}</dd>
+      <dt>Example</dt><dd><span class="ru" style="font-size:22px">${L.word}</span> <span class="tr">${phon(L.word)}</span><br>${L.mean}</dd>
     </dl>
     <div class="row">${playBtn(L.name,'Hear the letter')}<span>Letter</span>${playBtn(L.word,'Hear the word')}<span>Word</span></div>
     <div class="panel" style="margin-top:16px;display:flex;gap:16px;align-items:center">
@@ -934,13 +1072,13 @@ function openQuiz(){
     const qText = L.u==='Ы' ? 'Which letter makes the vowel sound in this word?' : 'Which letter does this word start with?';
     const sh=sheet(`<div class="progress-top"><div class="bar"><i style="width:${n/8*100}%"></i></div><button class="btn quiet small" id="qX">Close</button></div>
       <div class="q">${qText}</div><div class="row" style="margin-bottom:16px">${playBtn(target,'Play the word again')}<span class="muted">Play again</span></div>
-      <div class="opts" style="grid-template-columns:repeat(2,1fr)">${opts.map(o=>`<button class="opt" style="font-family:var(--display);font-size:30px;text-align:center" data-u="${o.u}">${o.u}${o.l}</button>`).join('')}</div><div id="qfb"></div>`);
+      <div class="opts" style="grid-template-columns:repeat(2,1fr)">${opts.map(o=>`<button class="opt" data-noph style="font-family:var(--display);font-size:30px;text-align:center" data-u="${o.u}">${o.u}${o.l}</button>`).join('')}</div><div id="qfb"></div>`);
     speak(target);
     $('#qX',sh).onclick=closeSheetToSounds;
     $$('[data-u]',sh).forEach(b=>b.onclick=()=>{
       $$('[data-u]',sh).forEach(x=>{x.disabled=true; if(x.dataset.u===L.u) x.classList.add('right');});
       const ok=b.dataset.u===L.u; if(ok) right++; else b.classList.add('wrong');
-      $('#qfb',sh).innerHTML=`<div class="fb ${ok?'ok':'no'}">${ok?'Right.':'It was '+L.u+'.'} <b>${target}</b> <span class="tr">${translit(target)}</span></div><button class="btn" style="margin-top:12px" id="qNext">Next</button>`;
+      $('#qfb',sh).innerHTML=`<div class="fb ${ok?'ok':'no'}">${ok?'Right.':'It was '+L.u+'.'} <b>${target}</b> <span class="tr">${phon(target)}</span></div><button class="btn" style="margin-top:12px" id="qNext">Next</button>`;
       $('#qNext',sh).onclick=()=>{n++;ask();};
     });
   };
@@ -984,7 +1122,7 @@ function runGrammarDrills(L, box){
       ${d.t==='mc'?`<div class="opts">${d.o.map((o,k)=>`<button class="opt" data-k="${k}">${esc(o)}</button>`).join('')}</div>`
         :`<div class="field"><input id="gIn" autocomplete="off" autocapitalize="off" spellcheck="false" lang="ru" placeholder="Type in Russian">${KBD_TOGGLE}<button class="btn" id="gCheck">Check</button></div>${kbdHTML()}`}
       <div id="gfb"></div>`;
-    const finish=(ok,ans)=>{ if(ok) right++; const isRu=/[А-яЁё]/.test(ans); $('#gfb',box).innerHTML=`<div class="fb ${ok?'ok':'no'}">${ok?'Correct.':'Answer:'} <b>${esc(ans)}</b> ${isRu?`<span class="tr">${translit(ans)}</span>`:''}</div><button class="btn" style="margin-top:12px" id="gNext">Continue</button>`; if(isRu) speak(ans); const nb=$('#gNext',box); nb.onclick=()=>{i++;next();}; };
+    const finish=(ok,ans)=>{ if(ok) right++; const isRu=/[А-яЁё]/.test(ans); $('#gfb',box).innerHTML=`<div class="fb ${ok?'ok':'no'}">${ok?'Correct.':'Answer:'} <b>${esc(ans)}</b> ${isRu?`<span class="tr">${phon(ans)}</span>`:''}</div><button class="btn" style="margin-top:12px" id="gNext">Continue</button>`; if(isRu) speak(ans); const nb=$('#gNext',box); nb.onclick=()=>{i++;next();}; };
     if(d.t==='mc'){
       $$('[data-k]',box).forEach(b=>b.onclick=()=>{ $$('[data-k]',box).forEach(x=>{x.disabled=true; if(+x.dataset.k===d.a) x.classList.add('right');}); const ok=+b.dataset.k===d.a; if(!ok) b.classList.add('wrong'); finish(ok,d.o[d.a]); });
     } else {
@@ -1028,7 +1166,7 @@ function renderWarmup(){
   app.innerHTML=`${sessionHead()}
   <h3>Warm-up: key phrases</h3>
   <p class="muted" style="margin:6px 0 14px">Tap play to hear each one, then the mic to say it. You don’t need all six; three good ones is plenty.</p>
-  <div class="phrases">${s.phrases.map((p,i)=>`<div class="phrase ${session.said[i]?'ok':''}" id="ph${i}"><div><div class="ruline" lang="ru">${esc(p[0])}</div>${state.translit?`<div class="tr">${esc(translit(p[0]))}</div>`:''}<div class="muted" style="font-size:15px">${esc(p[1])}</div><div class="heard" id="phOut${i}"></div></div>${playBtn(p[0])}${micBtn('phMic'+i,46,'Say this phrase')}</div>`).join('')}</div>
+  <div class="phrases">${s.phrases.map((p,i)=>`<div class="phrase ${session.said[i]?'ok':''}" id="ph${i}"><div><div class="ruline" lang="ru">${esc(p[0])}</div>${state.translit?`<div class="tr">${esc(phon(p[0]))}</div>`:''}<div class="muted" style="font-size:15px">${esc(p[1])}</div><div class="heard" id="phOut${i}"></div></div>${playBtn(p[0])}${micBtn('phMic'+i,46,'Say this phrase')}</div>`).join('')}</div>
   <div class="row" style="margin-top:20px"><button class="btn" id="toChat">Start the conversation</button></div>`;
   bindLeave();
   s.phrases.forEach((p,i)=>{ $('#phMic'+i).onclick=async e=>{ const sc=await sayCheck(e.currentTarget,p[0].replace(/…/g,''),$('#phOut'+i)); if(sc!=null&&sc>=0.7&&session){ session.said[i]=1; $('#ph'+i).classList.add('ok'); } }; });
@@ -1107,14 +1245,14 @@ function renderChat(){
   const retryable = session.error && !['no_key','bad_key','forbidden'].includes(session.error.code);
   app.innerHTML=`${sessionHead()}
   <div class="msgs" id="msgs" aria-live="polite">${session.messages.map((m,i)=> m.who==='ai'
-    ? `<div class="msg ai"><div class="ruline" lang="ru">${esc(m.ru)}</div>${state.translit?`<div class="tr">${esc(translit(m.ru))}</div>`:''}<div class="en" ${m.showEn?'':'hidden'} id="en${i}">${esc(m.en)}</div><div class="tools">${playBtn(m.ru,'Play again')}<button data-slow="${esc(m.ru)}">Slower</button><button data-en="${i}">${m.showEn?'Hide':'Show'} English</button></div></div>`
+    ? `<div class="msg ai"><div class="ruline" lang="ru">${esc(m.ru)}</div>${state.translit?`<div class="tr">${esc(phon(m.ru))}</div>`:''}<div class="en" ${m.showEn?'':'hidden'} id="en${i}">${esc(m.en)}</div><div class="tools">${playBtn(m.ru,'Play again')}<button data-slow="${esc(m.ru)}">Slower</button><button data-en="${i}">${m.showEn?'Hide':'Show'} English</button></div></div>`
     : `<div class="msg me ${m.unclear?'unclear':''}" ${m.en?'':'lang="ru"'}>${m.voice?'<span class="vo" aria-label="spoken">🎙️</span> ':''}${esc(m.text)}${m.en&&!m.unclear?'<div style="font-size:13px;opacity:.8;margin-top:3px">in English</div>':''}</div>${m.fix?`<div class="fix"><div class="muted" style="font-size:13px">Better</div><div class="row" style="gap:10px"><span class="better" lang="ru">${esc(m.fix.better)}</span>${playBtn(m.fix.better,'Hear the correction')}</div>${m.fix.why?`<div>${esc(m.fix.why)}</div>`:''}</div>`:''}${m.pron?`<div class="fix"><div class="muted" style="font-size:13px">Pronunciation</div><div>${esc(m.pron)}</div></div>`:''}`).join('')}
     ${session.busy?`<div class="msg ai typing">${session.pending&&session.pending.audio?'Listening to you…':'Thinking…'}</div>`:''}
     ${session.error?`<div class="fb no">${esc(errCopy(session.error))}${retryable?' <button class="btn small" id="retry" style="margin-left:6px">Retry</button>':''}${['no_key','bad_key'].includes(session.error.code)?' <button class="btn small" data-go="settings" style="margin-left:6px">Open Settings</button>':''}</div>`:''}
   </div>
   ${session.done||session.learnerTurns>=10?`<div class="panel" style="margin-top:16px;text-align:center"><p style="margin-bottom:10px"><b>Nice work.</b> That’s a full conversation.</p><button class="btn" id="finish2">See my recap</button></div>`:''}
   <div class="dock">
-    ${session.showHint&&lastAi&&lastAi.suggest?`<div class="hintbox"><div class="muted" style="font-size:13px">You could say</div><div class="row" style="gap:10px"><span style="font-size:19px;font-weight:600" lang="ru">${esc(lastAi.suggest)}</span>${playBtn(lastAi.suggest,'Hear the hint')}</div>${state.translit?`<div class="tr">${esc(translit(lastAi.suggest))}</div>`:''}<div class="muted" style="font-size:15px">${esc(lastAi.suggest_en)}</div></div>`:''}
+    ${session.showHint&&lastAi&&lastAi.suggest?`<div class="hintbox"><div class="muted" style="font-size:13px">You could say</div><div class="row" style="gap:10px"><span style="font-size:19px;font-weight:600" lang="ru">${esc(lastAi.suggest)}</span>${playBtn(lastAi.suggest,'Hear the hint')}</div>${state.translit?`<div class="tr">${esc(phon(lastAi.suggest))}</div>`:''}<div class="muted" style="font-size:15px">${esc(lastAi.suggest_en)}</div></div>`:''}
     <div id="live" class="heard" style="text-align:center;margin-bottom:6px">${session.recording?'Recording… tap to send':'Tap the mic, speak in Russian or English, tap again to send'}</div>
     <div class="dock-in">
       <div class="l" style="display:grid;gap:8px"><button class="btn quiet small" id="hint" ${lastAi&&lastAi.suggest?'':'disabled'}>${session.showHint?'Hide hint':'Hint'}</button></div>
@@ -1197,9 +1335,9 @@ Give at most 5 mistakes (only real ones) and 6 to 8 useful words.`;
   body.innerHTML = me.recapErr ? `<p class="muted">${me.recapErr.code==='nothing'?'You didn’t say anything this time, so there’s nothing to grade.':esc(errCopy(me.recapErr))}</p><p>You can still do the quick review below.</p>` : `
     <p>${esc(r.summary||'')}</p>
     ${Array.isArray(r.wins)&&r.wins.length?`<h3>What went well</h3><ul>${r.wins.map(w=>`<li>${esc(w)}</li>`).join('')}</ul>`:''}
-    <h3>Fix these</h3>${mistakes.length?mistakes.map(m=>`<div class="fix" style="max-width:none;margin-bottom:10px"><div class="muted" style="font-size:14px">You said: <span lang="ru">${esc(m.you_said||'')}</span></div><div class="row" style="gap:10px"><span class="better" lang="ru">${esc(m.better)}</span>${playBtn(m.better)}</div>${state.translit?`<div class="tr">${esc(translit(m.better))}</div>`:''}<div>${esc(m.why||'')}</div></div>`).join(''):'<p class="muted">No real mistakes this time.</p>'}
+    <h3>Fix these</h3>${mistakes.length?mistakes.map(m=>`<div class="fix" style="max-width:none;margin-bottom:10px"><div class="muted" style="font-size:14px">You said: <span lang="ru">${esc(m.you_said||'')}</span></div><div class="row" style="gap:10px"><span class="better" lang="ru">${esc(m.better)}</span>${playBtn(m.better)}</div>${state.translit?`<div class="tr">${esc(phon(m.better))}</div>`:''}<div>${esc(m.why||'')}</div></div>`).join(''):'<p class="muted">No real mistakes this time.</p>'}
     ${Array.isArray(r.pronunciation)&&r.pronunciation.length?`<h3>Pronunciation</h3><ul>${r.pronunciation.map(w=>`<li>${esc(w)}</li>`).join('')}</ul>`:''}`;
-  body.insertAdjacentHTML('beforeend', `<h3>Words going into your review deck</h3><div class="phrases">${me.reviewWords.map(w=>`<div class="phrase" style="grid-template-columns:1fr auto"><div><span class="ruline" lang="ru">${esc(w.ru)}</span>${state.translit?` <span class="tr">${esc(translit(w.ru))}</span>`:''}<div class="muted" style="font-size:15px">${esc(w.en)}</div></div>${playBtn(w.ru)}</div>`).join('')}</div>
+  body.insertAdjacentHTML('beforeend', `<h3>Words going into your review deck</h3><div class="phrases">${me.reviewWords.map(w=>`<div class="phrase" style="grid-template-columns:1fr auto"><div><span class="ruline" lang="ru">${esc(w.ru)}</span>${state.translit?` <span class="tr">${esc(phon(w.ru))}</span>`:''}<div class="muted" style="font-size:15px">${esc(w.en)}</div></div>${playBtn(w.ru)}</div>`).join('')}</div>
     <div class="row" style="margin-top:22px"><button class="btn" id="toReview">Start the quick review</button>${me.recapErr&&me.recapErr.code!=='nothing'?'<button class="btn ghost" id="recapRetry">Try the recap again</button>':''}</div>`);
   $('#toReview').onclick=()=>{ me.phase='review'; renderSession(); window.scrollTo(0,0); };
   const rr=$('#recapRetry'); if(rr) rr.onclick=()=>{ me.recapErr=null; renderRecap(); };
@@ -1242,7 +1380,7 @@ function runDrills(box, items, deck, onDone, onGrade){
       ${typed?`<div class="field"><input id="dIn" autocomplete="off" autocapitalize="off" spellcheck="false" lang="ru" placeholder="Type in Russian">${KBD_TOGGLE}<button class="btn" id="dCheck">Check</button></div>${kbdHTML()}`:''}<div id="dfb"></div>`;
     const finish=(ok,mid)=>{
       if(ok) right++; onGrade&&onGrade(it,ok);
-      $('#dfb',box).innerHTML=`<div class="fb ${ok?'ok':mid?'mid':'no'}">${ok?'Correct.':mid?'Almost.':'Answer:'} <b lang="ru">${esc(it.ru)}</b> <span class="tr">${esc(translit(it.ru))}</span><br>${esc(it.en)}</div><button class="btn" style="margin-top:12px" id="dNext">Continue</button>`;
+      $('#dfb',box).innerHTML=`<div class="fb ${ok?'ok':mid?'mid':'no'}">${ok?'Correct.':mid?'Almost.':'Answer:'} <b lang="ru">${esc(it.ru)}</b> <span class="tr">${esc(phon(it.ru))}</span><br>${esc(it.en)}</div><button class="btn" style="margin-top:12px" id="dNext">Continue</button>`;
       const nb=$('#dNext',box); nb.onclick=()=>{i++;next();};
     };
     if(it.type==='listen'){ speak(it.ru); $('[data-slowp]',box).onclick=()=>speak(it.ru,0.5); }
@@ -1277,7 +1415,7 @@ function renderReview(){
     <div class="track"><div class="big">${strong}</div>Well learned</div>
   </div>
   <div class="row section">${due.length?`<button class="btn" id="startRev">Review ${Math.min(due.length,12)} words</button>`:`<span class="muted">Nothing due right now.</span><button class="btn ghost" id="practiceAny">Practice anyway</button>`}</div>
-  <section class="section"><h2>Your deck</h2><div class="phrases">${state.srs.slice().sort((a,b)=>a.due-b.due).map(c=>`<div class="phrase"><div><span class="ruline" lang="ru">${esc(c.ru)}</span>${state.translit?` <span class="tr">${esc(translit(c.ru))}</span>`:''}<div class="muted" style="font-size:15px">${esc(c.en)}</div></div><span class="tag ${c.box>=4?'done-tag':''}">${c.due<=Date.now()?'Due':'Level '+c.box}</span>${playBtn(c.ru)}</div>`).join('')}</div></section>`;
+  <section class="section"><h2>Your deck</h2><div class="phrases">${state.srs.slice().sort((a,b)=>a.due-b.due).map(c=>`<div class="phrase"><div><span class="ruline" lang="ru">${esc(c.ru)}</span>${state.translit?` <span class="tr">${esc(phon(c.ru))}</span>`:''}<div class="muted" style="font-size:15px">${esc(c.en)}</div></div><span class="tag ${c.box>=4?'done-tag':''}">${c.due<=Date.now()?'Due':'Level '+c.box}</span>${playBtn(c.ru)}</div>`).join('')}</div></section>`;
   const start=(cards)=>{
     const items=buildItems(cards.map(c=>({ru:c.ru,en:c.en})),Math.min(12,Math.max(cards.length,4)));
     app.innerHTML=`<button class="btn quiet small" id="stopRev">Stop</button><section class="panel" style="margin-top:14px" id="drill"></section>`;
@@ -1287,6 +1425,90 @@ function renderReview(){
   };
   const sr=$('#startRev'); if(sr) sr.onclick=()=>start(shuffle(due).slice(0,12));
   const pa=$('#practiceAny'); if(pa) pa.onclick=()=>start(shuffle(state.srs).slice(0,8));
+}
+
+/* ============ Words: look up a word, see when to use it, say it back ============ */
+const unstress = s => String(s||'').replace(/́/g,'');
+let wordsBusy=null;
+function renderWords(openId){
+  const has=getKey();
+  app.innerHTML=`<h1>Words</h1>
+  <p class="lead" style="margin-top:8px">Type a word you want to say in Russian. Add how you’d use it if you like. You’ll get the translation, when Russians use it, an example, and a chance to say it back.</p>
+  ${has?'':`<div class="fb mid" style="margin-top:14px">Words needs your free Gemini key. <button class="btn small" data-go="settings" style="margin-left:6px">Add it</button></div>`}
+  <form class="panel section stack" id="wForm" autocomplete="off">
+    <label><div style="font-weight:600;margin-bottom:6px">Word</div>
+      <div class="field"><input id="wWord" required maxlength="60" placeholder="e.g. tired" autocapitalize="off"></div></label>
+    <label><div style="font-weight:600;margin-bottom:6px">How you’d use it <span class="muted" style="font-weight:400">(optional)</span></div>
+      <div class="field"><input id="wSent" maxlength="200" placeholder="e.g. I’m tired after work"></div></label>
+    <div class="row"><button class="btn" id="wGo" type="submit" ${has?'':'disabled'}>Translate</button><span class="muted" id="wStatus" style="font-size:15px"></span></div>
+  </form>
+  <section class="section" id="wResult"></section>
+  ${state.words.length?`<section class="section"><h2>Your words</h2><ul class="list">${state.words.map(w=>`<li><button class="item" data-wid="${w.id}" style="grid-template-columns:1fr auto"><span><span class="t" lang="ru">${esc(unstress(w.word.ru))}</span> <span class="tr">${esc(phon(w.word.ru))}</span><br><span class="s">${esc(w.input)}${w.sentenceIn?' · “'+esc(w.sentenceIn)+'”':''}</span></span><span class="tag ${w.said&&w.said.length?'done-tag':''}">${w.said&&w.said.length?'Said':'New'}</span></button></li>`).join('')}</ul></section>`:''}`;
+  $('#wForm').onsubmit=e=>{ e.preventDefault(); lookUpWord($('#wWord').value.trim(), $('#wSent').value.trim()); };
+  $$('[data-wid]').forEach(b=>b.onclick=()=>{ showWord(state.words.find(w=>w.id===b.dataset.wid)); $('#wResult').scrollIntoView({behavior:'smooth'}); });
+  if(openId) showWord(state.words.find(w=>w.id===openId));
+}
+async function lookUpWord(word, sentence){
+  if(!word || wordsBusy) return;
+  const st=$('#wStatus'), go=$('#wGo'); go.disabled=true; st.textContent='Translating…';
+  wordsBusy=new AbortController();
+  try{
+    const r=await gemini({models:QUICK_MODELS, temperature:0.3, signal:wordsBusy.signal, contents:[{role:'user',parts:[{text:
+`You help an English-speaking beginner learn Russian.
+Word or phrase they want: "${word}"
+${sentence?`How they want to use it: "${sentence}"`:'They gave no sentence.'}
+The word may be in English or Russian. If it has several meanings, pick the one that fits their sentence (or the most common one).
+In every Russian string, put a combining acute accent (U+0301) right after the stressed vowel of each word with more than one syllable, e.g. приве́т, спаси́бо. Never mark ё.
+Reply with ONLY JSON:
+{"word":{"ru":"the Russian word in its dictionary form","en":"short English meaning","info":"part of speech plus one useful grammar note, like gender or the other aspect of the verb, under 15 words"},
+ "sentence":${sentence?'{"ru":"natural Russian translation of their sentence","en":"their sentence in clean English"}':'null'},
+ "when":"two or three plain English sentences on when Russians use this word: the situations, formal or casual, and any common mix-up for English speakers",
+ "example":{"ru":"one short, natural everyday Russian sentence using the word, different from theirs","en":"English translation"}}`}]}]});
+    if(!r||!r.word||!r.word.ru||!r.example||!r.example.ru) throw {code:'bad_json'};
+    const item={id:Date.now().toString(36), input:word, sentenceIn:sentence||'', word:{ru:String(r.word.ru),en:String(r.word.en||''),info:String(r.word.info||'')},
+      sentence:sentence&&r.sentence&&r.sentence.ru?{ru:String(r.sentence.ru),en:String(r.sentence.en||sentence)}:null,
+      when:String(r.when||''), example:{ru:String(r.example.ru),en:String(r.example.en||'')}, said:[]};
+    state.words.unshift(item); state.words=state.words.slice(0,100); save();
+    if((location.hash||'')==='#words') renderWords(item.id);
+  }catch(e){
+    if(e&&e.code==='cancelled') return;
+    st.innerHTML=''; $('#wResult').innerHTML=`<div class="fb no">${esc(errCopy(e))}</div>`;
+    go.disabled=false;
+  }finally{ wordsBusy=null; }
+}
+function wordLine(ru, en){
+  return `<div class="row" style="gap:10px;align-items:flex-start"><div style="flex:1"><div class="ruline" lang="ru">${esc(unstress(ru))}</div>${state.translit?`<div class="tr">${esc(phon(ru))}</div>`:''}<div class="muted" style="font-size:15px">${esc(en)}</div></div>${playBtn(unstress(ru))}</div>`;
+}
+function sayItHTML(key, ru){
+  return `<div class="say-it">${micBtn('wMic-'+key,72,'Say it back')}<div style="flex:1"><div style="font-weight:600">Say it back</div><div class="heard" id="wOut-${key}">Listen first, then tap the mic and say the whole sentence.</div></div></div>`;
+}
+function showWord(w){
+  if(!w) return;
+  const box=$('#wResult');
+  const blocks=[];
+  if(w.sentence) blocks.push(['mine','Your sentence',w.sentence]);
+  blocks.push(['ex','Example',w.example]);
+  box.innerHTML=`<article class="panel wcard">
+    <div class="row" style="justify-content:space-between;align-items:flex-start">
+      <div><div class="big" lang="ru">${esc(unstress(w.word.ru))}</div>${state.translit?`<div class="tr">${esc(phon(w.word.ru))}</div>`:''}</div>
+      ${playBtn(unstress(w.word.ru),'Hear the word')}
+    </div>
+    <p style="margin:8px 0 0"><b>${esc(w.word.en)}</b>${w.word.info?` <span class="muted">· ${esc(w.word.info)}</span>`:''}</p>
+    ${w.when?`<div class="wblock"><div class="lbl">When to use it</div><p style="margin:0">${esc(w.when)}</p></div>`:''}
+    ${blocks.map(([k,label,x])=>`<div class="wblock"><div class="lbl">${label}</div>${wordLine(x.ru,x.en)}${sayItHTML(k,x.ru)}</div>`).join('')}
+    <div class="row" style="margin-top:18px"><button class="btn quiet small" id="wDeck">Add to review deck</button><button class="btn ghost small" id="wDel">Remove</button></div>
+  </article>`;
+  for(const [k,,x] of blocks){
+    $('#wMic-'+k,box).onclick=async e=>{
+      const score=await sayCheck(e.currentTarget, unstress(x.ru), $('#wOut-'+k,box));
+      if(score!=null && score>=0.8 && !w.said.includes(k)){ w.said.push(k); addXP(2); save(); toast('+2 XP. Nicely said.'); }
+    };
+  }
+  $('#wDeck',box).onclick=()=>{
+    const n=addWords([{ru:unstress(w.word.ru),en:w.word.en}, ...blocks.map(([,,x])=>({ru:unstress(x.ru),en:x.en}))]);
+    toast(n?`Added ${n} to your review deck.`:'Already in your review deck.');
+  };
+  $('#wDel',box).onclick=()=>{ state.words=state.words.filter(x=>x.id!==w.id); save(); renderWords(); };
 }
 
 updateChips();
