@@ -84,6 +84,17 @@ nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surfa
 .btn:disabled{opacity:.5;cursor:default}
 .icon-btn{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--surface);display:inline-grid;place-items:center;flex:none;padding:0}
 .icon-btn svg{width:20px;height:20px;fill:var(--cobalt)}
+.say-pair{display:inline-flex;gap:6px;flex:none;vertical-align:middle}
+.say-pair .slow-ic{font-size:19px;line-height:1}
+.say-pair.sm{margin-right:8px}
+.say-pair.sm .icon-btn{width:30px;height:30px}
+.say-pair.sm svg{width:16px;height:16px}
+.say-pair.sm .slow-ic{font-size:15px}
+.kw{border-radius:5px;transition:color .15s,background-color .15s,opacity .15s}
+.kara-on .kw{opacity:.5}
+.kara-on .kw.sung{opacity:1;color:var(--cobalt)}
+.kara-on .kw.now{opacity:1;color:var(--cobalt-ink);background:var(--cobalt);box-shadow:0 0 0 2px var(--cobalt)}
+@media (prefers-reduced-motion:reduce){.kw{transition:none}}
 .theme-btn .sun{display:none}
 .theme-btn.is-dark .sun{display:block}
 .theme-btn.is-dark .moon{display:none}
@@ -531,7 +542,10 @@ function toast(msg, ms=4200){
   t.textContent=msg; t.hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>{t.hidden=true},ms);
 }
 const ICON_PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 4V5L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>';
-function playBtn(text, label='Play'){ return `<button class="icon-btn" data-say="${esc(text)}" aria-label="${esc(label)}">${ICON_PLAY}</button>`; }
+const ICON_SLOW = '<span class="slow-ic" aria-hidden="true">🐢</span>';
+function playBtn(text, label='Play', small){
+  return `<span class="say-pair ${small?'sm':''}"><button class="icon-btn" data-say="${esc(text)}" aria-label="${esc(label)}">${ICON_PLAY}</button><button class="icon-btn" data-say-slow="${esc(text)}" aria-label="${esc(label)}, slowly" title="Play slowly">${ICON_SLOW}</button></span>`;
+}
 function micSVG(){
   let p=''; for(let i=0;i<8;i++) p+=`<ellipse class="pet" cx="60" cy="15" rx="7.5" ry="12" transform="rotate(${i*45} 60 60)"/>`;
   return `<svg viewBox="0 0 120 120" aria-hidden="true"><circle class="disc" cx="60" cy="60" r="60"/><g class="petals">${p}</g><circle class="core" cx="60" cy="60" r="29"/><rect class="ic" x="53.5" y="43" width="13" height="22" rx="6.5"/><path class="ics" d="M47 59a13 13 0 0 0 26 0M60 72v7M54 79h12"/></svg>`;
@@ -692,12 +706,70 @@ function unlockTTS(){
   try{ const u=new SpeechSynthesisUtterance(' '); u.volume=0; speechSynthesis.speak(u); }catch(e){}
 }
 document.addEventListener('pointerdown', unlockTTS, {once:true, capture:true});
-function speak(text, rate){
+const SLOW_RATE = 0.5;
+/* Karaoke: light up each word on screen as it's spoken. Browsers that report word boundaries
+   (Safari, iPhone) drive it exactly; others use a syllable-based timer that calibrates itself. */
+const WORD_RE=/[\p{L}\p{N}\u0301]+(?:[-’'][\p{L}\p{N}\u0301]+)*/gu;
+const wordsOf = t => [...String(t||'').matchAll(WORD_RE)].map(m=>({w:m[0], i:m.index}));
+const sylCount = w => Math.max(1,(w.toLowerCase().match(/[аеёиоуыэюяaeiouy]/g)||[]).length);
+let karaMsPerSyl=200, kara=null;
+function karaTarget(text, near){
+  const want=wordsOf(text).map(x=>norm(x.w)).join(' '); if(!want) return null;
+  const sel='[lang="ru"],.ru,.ruline,.big,.better,b';
+  const ok=el=>{ if(el.closest('.msg.me,.tr,.ph,button,.kbd') || !el.offsetParent) return false;
+    const t=[...el.childNodes].map(n=>n.nodeType===3?n.nodeValue:(n.classList&&(n.classList.contains('ph')||n.classList.contains('tr'))?' ':n.textContent)).join(' ');
+    return wordsOf(t).map(x=>norm(x.w)).join(' ')===want; };
+  for(let n=near&&near.parentElement, d=0; n&&d<5; n=n.parentElement, d++){ const hit=[...n.querySelectorAll(sel)].find(ok); if(hit) return hit; }
+  const all=[...document.querySelectorAll('#app '+sel.split(',').join(',#app ')+',.sheet '+sel.split(',').join(',.sheet '))].filter(ok);
+  return all[all.length-1]||null;
+}
+function karaWrap(el){
+  if(!el._kw){
+    const nodes=[], tw=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);
+    while(tw.nextNode()){ const n=tw.currentNode; if(!n.parentElement.closest('.ph,.tr,button')) nodes.push(n); }
+    for(const n of nodes){
+      const f=document.createDocumentFragment(); let last=0;
+      for(const m of n.nodeValue.matchAll(WORD_RE)){ f.append(n.nodeValue.slice(last,m.index)); const sp=document.createElement('span'); sp.className='kw'; sp.textContent=m[0]; f.append(sp); last=m.index+m[0].length; }
+      f.append(n.nodeValue.slice(last)); n.replaceWith(f);
+    }
+    el._kw=[...el.querySelectorAll('.kw')];
+  }
+  return el._kw;
+}
+function karaStop(){
+  if(!kara) return;
+  clearTimeout(kara.timer); clearTimeout(kara.fade);
+  kara.el.classList.remove('kara-on'); kara.spans.forEach(s=>s.classList.remove('now','sung'));
+  kara=null;
+}
+function karaSet(k, idx){
+  if(kara!==k) return;
+  k.spans.forEach((s,j)=>{ s.classList.toggle('sung', j<idx); s.classList.toggle('now', j===idx); });
+}
+function speak(text, rate, near){
   if(!('speechSynthesis' in window) || !text) return Promise.resolve();
-  speechSynthesis.cancel();
+  speechSynthesis.cancel(); karaStop();
   const u=new SpeechSynthesisUtterance(text); u.lang='ru-RU'; if(ruVoice) u.voice=ruVoice;
   u.rate = rate ?? (state.slow ? 0.72 : 0.95);
-  return new Promise(res=>{ u.onend=res; u.onerror=res; speechSynthesis.speak(u); });
+  const words=wordsOf(text), el=karaTarget(text, near);
+  let k=null;
+  if(el && words.length){ const spans=karaWrap(el); if(spans.length===words.length){ k=kara={el,spans,timer:0,fade:0,boundary:false,t0:0,syl:0}; el.classList.add('kara-on'); karaSet(k,-1); } }
+  // timer fallback: each word gets time for its syllables, plus a pause after punctuation
+  const plan=words.map((x,j)=>{ const next=words[j+1], gap=text.slice(x.i+x.w.length, next?next.i:text.length); return sylCount(x.w)+(/[,.!?;:…—]/.test(gap)?1.2:0.25); });
+  const runTimer=(j)=>{ if(!k||kara!==k||k.boundary||j>=words.length) return; karaSet(k,j); k.timer=setTimeout(()=>runTimer(j+1), plan[j]*karaMsPerSyl/u.rate); };
+  return new Promise(res=>{
+    const done=()=>{
+      if(k&&kara===k){
+        if(!k.boundary&&k.t0){ const took=performance.now()-k.t0, units=plan.reduce((a,b)=>a+b,0); if(took>300&&units) karaMsPerSyl=Math.min(400,Math.max(90, 0.6*karaMsPerSyl+0.4*took*u.rate/units)); }
+        clearTimeout(k.timer); karaSet(k,words.length); k.fade=setTimeout(()=>{ if(kara===k) karaStop(); },900);
+      }
+      res();
+    };
+    u.onstart=()=>{ if(k){ k.t0=performance.now(); runTimer(0); } };
+    u.onboundary=e=>{ if(!k||kara!==k||(e.name&&e.name!=='word')) return; k.boundary=true; clearTimeout(k.timer);
+      let j=0; while(j+1<words.length && words[j+1].i<=e.charIndex) j++; karaSet(k,j); };
+    u.onend=done; u.onerror=done; speechSynthesis.speak(u);
+  });
 }
 
 /* ============ Speech in: recording (works on iPhone) ============ */
@@ -838,7 +910,8 @@ function go(view){ if(view!=='talk') endSessionAudio(); if(location.hash==='#'+v
 window.addEventListener('hashchange',route);
 document.addEventListener('click',e=>{
   const g=e.target.closest('[data-go]'); if(g){ e.preventDefault(); if(g.dataset.go==='talk'){ endSessionAudio(); session=null; } go(g.dataset.go); return; }
-  const s=e.target.closest('[data-say]'); if(s){ speak(s.dataset.say); }
+  const s=e.target.closest('[data-say]'); if(s){ speak(s.dataset.say, undefined, s); return; }
+  const sl=e.target.closest('[data-say-slow]'); if(sl){ speak(sl.dataset.saySlow, SLOW_RATE, sl); }
 });
 function endSessionAudio(){ cancelRecording(); if(activeSR){ try{activeSR.stop();}catch(e){} } if(session&&session.ctl) session.ctl.abort(); }
 function route(){
@@ -857,7 +930,7 @@ function route(){
 
 /* Pronunciation guide everywhere: after anything renders, put [pree-VYET] after Russian text
    that doesn't already have its own guide line (.tr) next to it. */
-const PH_SKIP='.ph,.tr,[data-noph],input,textarea,select,script,style,svg,.kbd,.lt,.letter-big,nav,header';
+const PH_SKIP='.kw,.ph,.tr,[data-noph],input,textarea,select,script,style,svg,.kbd,.lt,.letter-big,nav,header';
 const PH_RUN=/[А-яЁё\u0301]+(?:[\s,.!?…—–-]+[А-яЁё\u0301]+)*[!?.…]?/g;
 function hasOwnGuide(el){ for(let n=el,d=0;n&&d<3;n=n.parentElement,d++){ if(n.nextElementSibling&&n.nextElementSibling.classList.contains('tr')) return true; if(n.querySelector(':scope > .tr')) return true; } return false; }
 function annotateRu(root){
@@ -1093,7 +1166,7 @@ function renderGrammar(){
   $$('[data-lesson]').forEach(b=>b.onclick=()=>openLesson(b.dataset.lesson));
   if(pendingLesson){ const id=pendingLesson; pendingLesson=null; openLesson(id); }
 }
-function sayable(t){ return /[А-яЁё]/.test(t) ? `<button class="icon-btn" style="width:30px;height:30px;margin-right:8px;vertical-align:middle" data-say="${esc(t.replace(/\(.*?\)/g,'').replace(/[:→]/g,' '))}" aria-label="Play">${ICON_PLAY}</button>` : ''; }
+function sayable(t){ return /[А-яЁё]/.test(t) ? playBtn(t.replace(/\(.*?\)/g,'').replace(/[:→]/g,' '),'Play',true) : ''; }
 function openLesson(id){
   const L=LESSONS.find(x=>x.id===id);
   app.innerHTML=`<button class="btn quiet small" data-go="grammar">All lessons</button>
@@ -1245,7 +1318,7 @@ function renderChat(){
   const retryable = session.error && !['no_key','bad_key','forbidden'].includes(session.error.code);
   app.innerHTML=`${sessionHead()}
   <div class="msgs" id="msgs" aria-live="polite">${session.messages.map((m,i)=> m.who==='ai'
-    ? `<div class="msg ai"><div class="ruline" lang="ru">${esc(m.ru)}</div>${state.translit?`<div class="tr">${esc(phon(m.ru))}</div>`:''}<div class="en" ${m.showEn?'':'hidden'} id="en${i}">${esc(m.en)}</div><div class="tools">${playBtn(m.ru,'Play again')}<button data-slow="${esc(m.ru)}">Slower</button><button data-en="${i}">${m.showEn?'Hide':'Show'} English</button></div></div>`
+    ? `<div class="msg ai"><div class="ruline" lang="ru">${esc(m.ru)}</div>${state.translit?`<div class="tr">${esc(phon(m.ru))}</div>`:''}<div class="en" ${m.showEn?'':'hidden'} id="en${i}">${esc(m.en)}</div><div class="tools">${playBtn(m.ru,'Play again')}<button data-en="${i}">${m.showEn?'Hide':'Show'} English</button></div></div>`
     : `<div class="msg me ${m.unclear?'unclear':''}" ${m.en?'':'lang="ru"'}>${m.voice?'<span class="vo" aria-label="spoken">🎙️</span> ':''}${esc(m.text)}${m.en&&!m.unclear?'<div style="font-size:13px;opacity:.8;margin-top:3px">in English</div>':''}</div>${m.fix?`<div class="fix"><div class="muted" style="font-size:13px">Better</div><div class="row" style="gap:10px"><span class="better" lang="ru">${esc(m.fix.better)}</span>${playBtn(m.fix.better,'Hear the correction')}</div>${m.fix.why?`<div>${esc(m.fix.why)}</div>`:''}</div>`:''}${m.pron?`<div class="fix"><div class="muted" style="font-size:13px">Pronunciation</div><div>${esc(m.pron)}</div></div>`:''}`).join('')}
     ${session.busy?`<div class="msg ai typing">${session.pending&&session.pending.audio?'Listening to you…':'Thinking…'}</div>`:''}
     ${session.error?`<div class="fb no">${esc(errCopy(session.error))}${retryable?' <button class="btn small" id="retry" style="margin-left:6px">Retry</button>':''}${['no_key','bad_key'].includes(session.error.code)?' <button class="btn small" data-go="settings" style="margin-left:6px">Open Settings</button>':''}</div>`:''}
@@ -1266,7 +1339,6 @@ function renderChat(){
   </div>`;
   bindLeave();
   requestAnimationFrame(()=>window.scrollTo({top:document.body.scrollHeight}));
-  $$('[data-slow]').forEach(b=>b.onclick=()=>speak(b.dataset.slow,0.55));
   $$('[data-en]').forEach(b=>b.onclick=()=>{ const m=session.messages[+b.dataset.en]; m.showEn=!m.showEn; $('#en'+b.dataset.en).hidden=!m.showEn; b.textContent=(m.showEn?'Hide':'Show')+' English'; });
   const hb=$('#hint'); if(hb) hb.onclick=()=>{ session.showHint=!session.showHint; renderChat(); };
   $('#typeTog').onclick=()=>{ session.typing=!session.typing; renderChat(); if(session.typing) $('#chatIn')?.focus(); };
@@ -1371,7 +1443,7 @@ function runDrills(box, items, deck, onDone, onGrade){
     if(i>=items.length){ onDone(right,items.length); return; }
     const it=items[i];
     let body='';
-    if(it.type==='listen') body=`<div class="q">Listen and type what you hear</div><div class="row" style="margin-bottom:14px">${playBtn(it.ru,'Play')}<button class="btn quiet small" data-slowp>Slower</button></div>`;
+    if(it.type==='listen') body=`<div class="q">Listen and type what you hear</div><div class="row" style="margin-bottom:14px">${playBtn(it.ru,'Play')}</div>`;
     if(it.type==='produce') body=`<div class="q">How do you say <span style="color:var(--cobalt)">“${esc(it.en)}”</span>?</div>`;
     if(it.type==='recognize'){ const opts=shuffle([it.en,...shuffle(enPool.filter(e=>e!==it.en)).slice(0,3)]); body=`<div class="q">What does this mean?</div><div class="row" style="margin-bottom:14px"><span class="ru" style="font-size:26px" lang="ru">${esc(it.ru)}</span>${playBtn(it.ru)}</div><div class="opts">${opts.map(o=>`<button class="opt" data-o="${esc(o)}">${esc(o)}</button>`).join('')}</div>`; }
     if(it.type==='speak') body=`<div class="q">Say this out loud</div><div class="row" style="margin-bottom:6px"><span class="ru" style="font-size:26px" lang="ru">${esc(it.ru)}</span>${playBtn(it.ru)}</div><div class="muted" style="margin-bottom:14px">${esc(it.en)}</div><div class="row">${micBtn('dMic',80,'Say it')}<div class="heard" id="dOut" style="flex:1">Tap the mic.</div></div><button class="btn quiet small" style="margin-top:12px" id="skipSpeak">I can’t speak right now</button>`;
@@ -1383,7 +1455,7 @@ function runDrills(box, items, deck, onDone, onGrade){
       $('#dfb',box).innerHTML=`<div class="fb ${ok?'ok':mid?'mid':'no'}">${ok?'Correct.':mid?'Almost.':'Answer:'} <b lang="ru">${esc(it.ru)}</b> <span class="tr">${esc(phon(it.ru))}</span><br>${esc(it.en)}</div><button class="btn" style="margin-top:12px" id="dNext">Continue</button>`;
       const nb=$('#dNext',box); nb.onclick=()=>{i++;next();};
     };
-    if(it.type==='listen'){ speak(it.ru); $('[data-slowp]',box).onclick=()=>speak(it.ru,0.5); }
+    if(it.type==='listen'){ speak(it.ru); }
     if(typed){
       const inp=$('#dIn',box); bindKbd(box,inp);
       const check=()=>{ if(!inp.value.trim()) return; inp.disabled=true; $('#dCheck',box).disabled=true; const r=checkTyped(inp.value,[it.ru]); finish(r.score>=0.85, r.score>=0.6); if(r.score>=0.85&&r.latin) toast('Right, in Latin letters. Try the АБВ keyboard next time.'); if(it.type==='produce') speak(it.ru); };
