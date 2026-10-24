@@ -90,11 +90,11 @@ nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surfa
 .say-pair.sm .icon-btn{width:30px;height:30px}
 .say-pair.sm svg{width:16px;height:16px}
 .say-pair.sm .slow-ic{font-size:15px}
-.kw{border-radius:5px;transition:color .15s,background-color .15s,opacity .15s}
-.kara-on .kw{opacity:.5}
-.kara-on .kw.sung{opacity:1;color:var(--cobalt)}
-.kara-on .kw.now{opacity:1;color:var(--cobalt-ink);background:var(--cobalt);box-shadow:0 0 0 2px var(--cobalt)}
-@media (prefers-reduced-motion:reduce){.kw{transition:none}}
+.kl{transition:color .12s,opacity .12s,background-color .12s}
+.kara-on .kl{opacity:.45}
+.kara-on .kl.lit{opacity:1;color:var(--cobalt);background:var(--cobalt-soft)}
+.kbar{position:fixed;left:0;top:0;width:3px;border-radius:2px;background:var(--cobalt);box-shadow:0 0 0 1px var(--surface),0 0 10px var(--cobalt);z-index:4;pointer-events:none;will-change:transform}
+@media (prefers-reduced-motion:reduce){.kl{transition:none}}
 .theme-btn .sun{display:none}
 .theme-btn.is-dark .sun{display:block}
 .theme-btn.is-dark .moon{display:none}
@@ -707,9 +707,10 @@ function unlockTTS(){
 }
 document.addEventListener('pointerdown', unlockTTS, {once:true, capture:true});
 const SLOW_RATE = 0.5;
-/* Karaoke: light up each word on screen as it's spoken. Browsers that report word boundaries
-   (Safari, iPhone) drive it exactly; others use a syllable-based timer that calibrates itself. */
-const WORD_RE=/[\p{L}\p{N}\u0301]+(?:[-’'][\p{L}\p{N}\u0301]+)*/gu;
+/* Karaoke: a vertical bar sweeps along the Russian text as it's spoken, lighting up each letter it passes.
+   Word-boundary events (Safari, iPhone) pin each word's start to the real audio; between them, and in
+   browsers without those events, the bar moves at a syllable-based pace that calibrates itself. */
+const WORD_RE=/[\p{L}\p{N}́]+(?:[-’'][\p{L}\p{N}́]+)*/gu;
 const wordsOf = t => [...String(t||'').matchAll(WORD_RE)].map(m=>({w:m[0], i:m.index}));
 const sylCount = w => Math.max(1,(w.toLowerCase().match(/[аеёиоуыэюяaeiouy]/g)||[]).length);
 let karaMsPerSyl=200, kara=null;
@@ -723,28 +724,42 @@ function karaTarget(text, near){
   const all=[...document.querySelectorAll('#app '+sel.split(',').join(',#app ')+',.sheet '+sel.split(',').join(',.sheet '))].filter(ok);
   return all[all.length-1]||null;
 }
+/* Wraps each word in .kw and each letter in .kl (once per element). Returns one array of letter spans per word. */
 function karaWrap(el){
   if(!el._kw){
     const nodes=[], tw=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);
     while(tw.nextNode()){ const n=tw.currentNode; if(!n.parentElement.closest('.ph,.tr,button')) nodes.push(n); }
     for(const n of nodes){
       const f=document.createDocumentFragment(); let last=0;
-      for(const m of n.nodeValue.matchAll(WORD_RE)){ f.append(n.nodeValue.slice(last,m.index)); const sp=document.createElement('span'); sp.className='kw'; sp.textContent=m[0]; f.append(sp); last=m.index+m[0].length; }
+      for(const m of n.nodeValue.matchAll(WORD_RE)){
+        f.append(n.nodeValue.slice(last,m.index));
+        const w=document.createElement('span'); w.className='kw';
+        for(const ch of m[0]){ if(ch==='́'&&w.lastChild){ w.lastChild.textContent+=ch; continue; } const l=document.createElement('span'); l.className='kl'; l.textContent=ch; w.append(l); }
+        f.append(w); last=m.index+m[0].length;
+      }
       f.append(n.nodeValue.slice(last)); n.replaceWith(f);
     }
-    el._kw=[...el.querySelectorAll('.kw')];
+    el._kw=[...el.querySelectorAll('.kw')].map(w=>[...w.children]);
   }
   return el._kw;
 }
 function karaStop(){
   if(!kara) return;
-  clearTimeout(kara.timer); clearTimeout(kara.fade);
-  kara.el.classList.remove('kara-on'); kara.spans.forEach(s=>s.classList.remove('now','sung'));
-  kara=null;
+  cancelAnimationFrame(kara.raf); clearTimeout(kara.fade);
+  kara.el.classList.remove('kara-on'); kara.letters.forEach(l=>l.classList.remove('lit'));
+  kara.bar.remove(); kara=null;
 }
-function karaSet(k, idx){
+/* Draw the bar at position P, counted in letters from the start of the text. */
+function karaDraw(k, P){
   if(kara!==k) return;
-  k.spans.forEach((s,j)=>{ s.classList.toggle('sung', j<idx); s.classList.toggle('now', j===idx); });
+  P=Math.max(k.shown, Math.min(P, k.letters.length)); k.shown=P;
+  const whole=Math.floor(P);
+  for(let i=k.lit;i<k.letters.length;i++){ if(i<whole){ k.letters[i].classList.add('lit'); k.lit=i+1; } else break; }
+  const at = whole<k.letters.length ? k.letters[whole] : k.letters[k.letters.length-1];
+  const r=at.getBoundingClientRect(), into = whole<k.letters.length ? P-whole : 1;
+  if(whole<k.letters.length && into>0.5 && !at.classList.contains('lit')){ at.classList.add('lit'); }
+  k.bar.style.transform=`translate(${Math.round((r.left+r.width*into-1.5)*10)/10}px,${Math.round(r.top-3)}px)`;
+  k.bar.style.height=(r.height+6)+'px';
 }
 function speak(text, rate, near){
   if(!('speechSynthesis' in window) || !text) return Promise.resolve();
@@ -752,22 +767,54 @@ function speak(text, rate, near){
   const u=new SpeechSynthesisUtterance(text); u.lang='ru-RU'; if(ruVoice) u.voice=ruVoice;
   u.rate = rate ?? (state.slow ? 0.72 : 0.95);
   const words=wordsOf(text), el=karaTarget(text, near);
+  // pace plan, in syllable units: each word's sound, then a pause (longer after punctuation)
+  const plan=words.map((x,j)=>{ const next=words[j+1], gap=text.slice(x.i+x.w.length, next?next.i:text.length); return {say:sylCount(x.w), rest:/[,.!?;:…—]/.test(gap)?1.2:0.25}; });
   let k=null;
-  if(el && words.length){ const spans=karaWrap(el); if(spans.length===words.length){ k=kara={el,spans,timer:0,fade:0,boundary:false,t0:0,syl:0}; el.classList.add('kara-on'); karaSet(k,-1); } }
-  // timer fallback: each word gets time for its syllables, plus a pause after punctuation
-  const plan=words.map((x,j)=>{ const next=words[j+1], gap=text.slice(x.i+x.w.length, next?next.i:text.length); return sylCount(x.w)+(/[,.!?;:…—]/.test(gap)?1.2:0.25); });
-  const runTimer=(j)=>{ if(!k||kara!==k||k.boundary||j>=words.length) return; karaSet(k,j); k.timer=setTimeout(()=>runTimer(j+1), plan[j]*karaMsPerSyl/u.rate); };
+  if(el && words.length){
+    const perWord=karaWrap(el);
+    if(perWord.length===words.length){
+      const bar=document.createElement('div'); bar.className='kbar'; bar.setAttribute('aria-hidden','true');
+      if(el.closest('.sheet-wrap')) bar.style.zIndex='25';
+      document.body.appendChild(bar);
+      const first=[]; let n=0; perWord.forEach(ls=>{ first.push(n); n+=ls.length; });
+      k=kara={el, bar, letters:perWord.flat(), perWord, first, raf:0, fade:0, t0:0, word:-1, wordAt:0, lastB:-1, lastBAt:0, boundary:false, shown:0, lit:0, done:false};
+      el.classList.add('kara-on'); karaDraw(k,0);
+    }
+  }
+  const unit=()=>karaMsPerSyl/u.rate;
+  const frame=()=>{
+    if(!k||kara!==k||k.done) return;
+    const now=performance.now();
+    let j, t;
+    if(k.boundary){ j=k.word; t=now-k.wordAt; }                        // time since this word's real start
+    else { t=now-k.t0; j=0; while(j<words.length-1 && t>=(plan[j].say+plan[j].rest)*unit()){ t-=(plan[j].say+plan[j].rest)*unit(); j++; } }
+    const frac=Math.min(1, t/(plan[j].say*unit()));
+    karaDraw(k, k.first[j] + frac*k.perWord[j].length);
+    k.raf=requestAnimationFrame(frame);
+  };
   return new Promise(res=>{
     const done=()=>{
       if(k&&kara===k){
-        if(!k.boundary&&k.t0){ const took=performance.now()-k.t0, units=plan.reduce((a,b)=>a+b,0); if(took>300&&units) karaMsPerSyl=Math.min(400,Math.max(90, 0.6*karaMsPerSyl+0.4*took*u.rate/units)); }
-        clearTimeout(k.timer); karaSet(k,words.length); k.fade=setTimeout(()=>{ if(kara===k) karaStop(); },900);
+        if(!k.boundary&&k.t0){ const took=performance.now()-k.t0, units=plan.reduce((a,p)=>a+p.say+p.rest,0); if(took>300&&units) karaMsPerSyl=Math.min(400,Math.max(90, 0.6*karaMsPerSyl+0.4*took*u.rate/units)); }
+        k.done=true; cancelAnimationFrame(k.raf); karaDraw(k,k.letters.length);
+        k.fade=setTimeout(()=>{ if(kara===k) karaStop(); },900);
       }
       res();
     };
-    u.onstart=()=>{ if(k){ k.t0=performance.now(); runTimer(0); } };
-    u.onboundary=e=>{ if(!k||kara!==k||(e.name&&e.name!=='word')) return; k.boundary=true; clearTimeout(k.timer);
-      let j=0; while(j+1<words.length && words[j+1].i<=e.charIndex) j++; karaSet(k,j); };
+    u.onstart=()=>{ if(k){ k.t0=performance.now(); k.raf=requestAnimationFrame(frame); } };
+    u.onboundary=e=>{
+      if(!k||kara!==k||(e.name&&e.name!=='word')) return;
+      let j=0; while(j+1<words.length && words[j+1].i<=e.charIndex) j++;
+      const now=performance.now();
+      if(k.lastB>=0 && j>k.lastB){ // learn this voice's real pace from the gap between word starts
+        const units=plan.slice(k.lastB,j).reduce((a,p)=>a+p.say+p.rest,0), ms=(now-k.lastBAt)*u.rate/units;
+        if(ms>40&&ms<600) karaMsPerSyl=0.7*karaMsPerSyl+0.3*ms;
+      }
+      // if the bar is already partway into this word, carry on from there instead of pausing
+      const into=Math.max(0, Math.min(1,(k.shown-k.first[j])/k.perWord[j].length));
+      k.boundary=true; k.word=j; k.wordAt=now-into*plan[j].say*unit(); k.lastB=j; k.lastBAt=now;
+      karaDraw(k, k.first[j]);
+    };
     u.onend=done; u.onerror=done; speechSynthesis.speak(u);
   });
 }
@@ -930,7 +977,7 @@ function route(){
 
 /* Pronunciation guide everywhere: after anything renders, put [pree-VYET] after Russian text
    that doesn't already have its own guide line (.tr) next to it. */
-const PH_SKIP='.kw,.ph,.tr,[data-noph],input,textarea,select,script,style,svg,.kbd,.lt,.letter-big,nav,header';
+const PH_SKIP='.kw,.kl,.ph,.tr,[data-noph],input,textarea,select,script,style,svg,.kbd,.lt,.letter-big,nav,header';
 const PH_RUN=/[А-яЁё\u0301]+(?:[\s,.!?…—–-]+[А-яЁё\u0301]+)*[!?.…]?/g;
 function hasOwnGuide(el){ for(let n=el,d=0;n&&d<3;n=n.parentElement,d++){ if(n.nextElementSibling&&n.nextElementSibling.classList.contains('tr')) return true; if(n.querySelector(':scope > .tr')) return true; } return false; }
 function annotateRu(root){
