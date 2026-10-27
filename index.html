@@ -54,10 +54,12 @@ button{cursor:pointer}
 :focus-visible{outline:3px solid var(--cobalt);outline-offset:2px;border-radius:8px}
 
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
-.top-in{max-width:760px;margin:0 auto;display:flex;align-items:center;gap:14px;padding:12px 20px}
+.top-in{max-width:760px;margin:0 auto;display:flex;align-items:center;gap:10px;padding:12px 16px}
 .brand{font-family:var(--display);font-weight:700;font-size:22px;letter-spacing:-.01em;color:var(--cobalt);margin-right:auto;background:none;border:0;padding:0}
 .chip{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:15px;padding:5px 11px;border-radius:999px;background:var(--surface);border:1px solid var(--line)}
 .chip.streak{color:var(--amber)}
+.chip{white-space:nowrap}
+@media (max-width:400px){.top-in{gap:7px;padding:10px 12px}.chip{font-size:13.5px;padding:4px 8px}.brand{font-size:19px}.top .icon-btn{width:36px;height:36px}}
 
 main{max-width:760px;margin:0 auto;padding:22px 20px 120px}
 h1,h2,h3{font-family:var(--display);font-weight:700;line-height:1.15;margin:0}
@@ -70,9 +72,10 @@ p{margin:0 0 12px}
 .section{margin-top:30px}
 
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
-.tabs-in{max-width:760px;margin:0 auto;display:grid;grid-template-columns:repeat(6,1fr)}
+.tabs-in{max-width:760px;margin:0 auto;display:grid;grid-template-columns:repeat(7,1fr)}
 .tab{background:none;border:0;padding:10px 4px 9px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12.5px;font-weight:600;color:var(--muted)}
-.tab .g{font-family:var(--display);font-size:18px;line-height:1.1}
+.tab .g{font-family:var(--display);font-size:18px;line-height:1.1;white-space:nowrap}
+@media (max-width:420px){.tab{font-size:11.5px;padding-left:0;padding-right:0}.tab .g{font-size:15px}}
 .tab[aria-current="page"]{color:var(--cobalt)}
 
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px}
@@ -86,6 +89,18 @@ nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surfa
 .icon-btn svg{width:20px;height:20px;fill:var(--cobalt)}
 .say-pair{display:inline-flex;gap:6px;flex:none;vertical-align:middle}
 .say-pair .slow-ic{font-size:19px;line-height:1}
+.save-btn svg.mark,.saved-top svg{fill:none;stroke:var(--cobalt);stroke-width:2;stroke-linejoin:round}
+.save-btn.on svg.mark{fill:var(--cobalt)}
+.saved-top{position:relative}
+.saved-top .badge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--cobalt);color:var(--cobalt-ink);font-size:11px;font-weight:700;line-height:18px;text-align:center}
+.say-pair.sm .save-btn svg{width:15px;height:15px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 13px;font-size:15px;font-weight:600;color:var(--ink)}
+.chips button[aria-pressed="true"]{background:var(--cobalt);border-color:var(--cobalt);color:var(--cobalt-ink)}
+.saying .lit-line{font-style:italic}
+.saying dl{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:12px 0 0;font-size:16px}
+.saying dt{color:var(--muted);font-weight:600}
+.saying dd{margin:0}
 .say-pair.sm{margin-right:8px}
 .say-pair.sm .icon-btn{width:30px;height:30px}
 .say-pair.sm svg{width:16px;height:16px}
@@ -247,6 +262,7 @@ details summary{list-style-position:inside}
   <button class="brand" data-go="home" aria-label="Говори home">Говори</button>
   <span class="chip streak" id="streakChip" title="Day streak">🔥 0</span>
   <span class="chip" id="xpChip" title="Total XP">0 XP</span>
+  <button class="icon-btn saved-top" data-go="saved" id="savedTop" aria-label="Saved words and phrases" title="Saved"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3h11a1 1 0 0 1 1 1v17l-6.5-3.8L5.5 21V4a1 1 0 0 1 1-1z"/></svg><span class="badge" id="savedCount" hidden>0</span></button>
   <button class="icon-btn theme-btn" id="themeBtn" type="button" aria-label="Switch to dark mode" title="Switch to dark mode">
     <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 14.5A9 9 0 0 1 9.5 3a9 9 0 1 0 11.5 11.5z"/></svg>
     <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M11 1h2v3h-2zM11 20h2v3h-2zM1 11h3v2H1zM20 11h3v2h-3zM4.2 2.8l2.1 2.1-1.4 1.4-2.1-2.1zM17.7 16.3l2.1 2.1-1.4 1.4-2.1-2.1zM2.8 19.8l2.1-2.1 1.4 1.4-2.1 2.1zM16.3 6.3l2.1-2.1 1.4 1.4-2.1 2.1z"/></svg>
@@ -259,6 +275,7 @@ details summary{list-style-position:inside}
   <button class="tab" data-go="grammar"><span class="g">Я</span>Grammar</button>
   <button class="tab" data-go="talk"><span class="g">Да!</span>Talk</button>
   <button class="tab" data-go="words"><span class="g">Сл</span>Words</button>
+  <button class="tab" data-go="sayings"><span class="g">🪆</span>Wisdom</button>
   <button class="tab" data-go="review"><span class="g">↻</span>Review</button>
 </div></nav>
 <script>
@@ -432,7 +449,7 @@ const STRESS = new Map(('амЕрики Аня билЕт болИт бЫло в
  'недЕля нормАльно обрАтно одИн окнО Ольга онА онИ онО Очень падежИ пАпа пАрке плОхо плЯже подъЕзд пОезд понимАем понимАть привЕт '+
  'приЯтно прЯмо рабОта рабОте россИи россИю россИя рЫба рЫнке скОлько слУшать смотрЕл смотрЕть смотрИт собОй сосЕд спасИбо стОит '+
  'студЕнт студЕнта тебЯ температУра тудА Ужин Утро фОто ходИли хОчешь читАем читАет читАете читАешь читАл читАла читАли читАло читАть '+
- 'читАю читАют шкОла шкОле шкОлу Это Яблоки хорошО зАвтра когдА почемУ тОже тОлько понимАю понимАешь рУсский англИйский немнОго мнОго '+
+ 'говорИ читАю читАют шкОла шкОле шкОлу Это Яблоки хорошО зАвтра когдА почемУ тОже тОлько понимАю понимАешь рУсский англИйский немнОго мнОго '+
  'покА большОе дОброе утрА вЕчер дОбрый хочУ могУ бУду былА бЫли тебЕ сестрА подрУга собАка дЕньги нУжно нАдо нельзЯ прАвда всегдА '+
  'никогдА иногдА чАсто кудА откУда котОрый человЕк врЕмя слОво рабОтаю учУсь учИться повторИте мЕдленнее простИте спокОйной нОчи '+
  'свидАния сдЕлать увИдимся хорОшего удАчи вкУсно нрАвится лЮбишь интерЕсно мОжет сЕйчас вОт').split(' ').filter(Boolean)
@@ -543,8 +560,27 @@ function toast(msg, ms=4200){
 }
 const ICON_PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 4V5L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>';
 const ICON_SLOW = '<span class="slow-ic" aria-hidden="true">🐢</span>';
-function playBtn(text, label='Play', small){
-  return `<span class="say-pair ${small?'sm':''}"><button class="icon-btn" data-say="${esc(text)}" aria-label="${esc(label)}">${ICON_PLAY}</button><button class="icon-btn" data-say-slow="${esc(text)}" aria-label="${esc(label)}, slowly" title="Play slowly">${ICON_SLOW}</button></span>`;
+const ICON_MARK = '<svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3h11a1 1 0 0 1 1 1v17l-6.5-3.8L5.5 21V4a1 1 0 0 1 1-1z"/></svg>';
+const isSaved = t => state.saved.some(x=>norm(x.ru)===norm(t));
+function saveBtn(text, en){ const on=isSaved(text); return `<button class="icon-btn save-btn ${on?'on':''}" data-save="${esc(text)}" data-save-en="${esc(en||'')}" aria-pressed="${on}" aria-label="${on?'Remove from saved':'Save for later'}" title="${on?'Saved':'Save for later'}">${ICON_MARK}</button>`; }
+/* Speaker, slow speaker and bookmark. Pass en (the English meaning) when it's known, so saved items keep it. */
+function playBtn(text, label='Play', small, en){
+  return `<span class="say-pair ${small?'sm':''}"><button class="icon-btn" data-say="${esc(text)}" aria-label="${esc(label)}">${ICON_PLAY}</button><button class="icon-btn" data-say-slow="${esc(text)}" aria-label="${esc(label)}, slowly" title="Play slowly">${ICON_SLOW}</button>${saveBtn(text,en)}</span>`;
+}
+/* The stress-marked spelling of a phrase, if the AI gave us one (Words, Wisdom), for a better pronunciation guide. */
+function stressedOf(ru){
+  const pool=[...state.sayings.flatMap(x=>[x.ru, x.example&&x.example.ru]), ...state.words.flatMap(w=>[w.word.ru, w.sentence&&w.sentence.ru, w.example.ru])].filter(Boolean);
+  return pool.find(x=>norm(x)===norm(ru)) || ru;
+}
+function toggleSaved(text, en){
+  const ru=String(text).replace(/\u0301/g,'').trim(); if(!ru) return;
+  const i=state.saved.findIndex(x=>norm(x.ru)===norm(ru));
+  if(i>=0){ state.saved.splice(i,1); toast('Removed from saved.'); }
+  else { state.saved.unshift({ru, ph:stressedOf(ru), en:en||'', at:Date.now()}); toast('Saved. Find it under the bookmark at the top.'); }
+  save();
+  const on=i<0;
+  $$('.save-btn').forEach(b=>{ if(norm(b.dataset.save)===norm(ru)){ b.classList.toggle('on',on); b.setAttribute('aria-pressed',String(on)); b.setAttribute('aria-label',on?'Remove from saved':'Save for later'); b.title=on?'Saved':'Save for later'; } });
+  updateChips();
 }
 function micSVG(){
   let p=''; for(let i=0;i<8;i++) p+=`<ellipse class="pet" cx="60" cy="15" rx="7.5" ry="12" transform="rotate(${i*45} 60 60)"/>`;
@@ -555,7 +591,7 @@ const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platfor
 const isStandalone = window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone===true;
 
 /* ============ State ============ */
-const DEFAULT_STATE = {xp:0,streak:0,lastDay:null,todayXp:0,todayDate:null,goal:30,letters:{},grammar:{},talks:{},srs:[],words:[],slow:true,translit:true,checker:'auto',model:'',updatedAt:0};
+const DEFAULT_STATE = {xp:0,streak:0,lastDay:null,todayXp:0,todayDate:null,goal:30,letters:{},grammar:{},talks:{},srs:[],words:[],saved:[],sayings:[],slow:true,translit:true,checker:'auto',model:'',updatedAt:0};
 let state = loadLocal();
 function loadLocal(){
   try{ const raw=localStorage.getItem('govori-state'); if(raw) return {...DEFAULT_STATE, ...JSON.parse(raw)}; }catch(e){}
@@ -598,6 +634,7 @@ function updateChips(){
   const alive = state.lastDay===todayKey() || state.lastDay===yesterdayKey();
   $('#streakChip').textContent = '🔥 '+(alive?state.streak:0);
   $('#xpChip').textContent = state.xp+' XP';
+  const sc=$('#savedCount'); if(sc){ sc.textContent=state.saved.length; sc.hidden=!state.saved.length; }
 }
 
 /* Spaced repetition */
@@ -706,14 +743,22 @@ function unlockTTS(){
   try{ const u=new SpeechSynthesisUtterance(' '); u.volume=0; speechSynthesis.speak(u); }catch(e){}
 }
 document.addEventListener('pointerdown', unlockTTS, {once:true, capture:true});
-const SLOW_RATE = 0.5;
+/* Normal speed follows the "Slow Russian speech" setting; the turtle button plays at exactly half of that. */
+const normalRate = () => state.slow ? 0.72 : 0.95;
+const SLOW_FACTOR = 0.5;
 /* Karaoke: a vertical bar sweeps along the Russian text as it's spoken, lighting up each letter it passes.
    Word-boundary events (Safari, iPhone) pin each word's start to the real audio; between them, and in
-   browsers without those events, the bar moves at a syllable-based pace that calibrates itself. */
+   browsers without those events, the bar moves at a syllable-based pace learned from this device's voice. */
 const WORD_RE=/[\p{L}\p{N}́]+(?:[-’'][\p{L}\p{N}́]+)*/gu;
 const wordsOf = t => [...String(t||'').matchAll(WORD_RE)].map(m=>({w:m[0], i:m.index}));
 const sylCount = w => Math.max(1,(w.toLowerCase().match(/[аеёиоуыэюяaeiouy]/g)||[]).length);
-let karaMsPerSyl=200, kara=null;
+const KARA_LEAD = 70;   // ms: the bar runs a hair ahead, which reads as "in sync" to the eye
+function lsGet(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+let karaMsPerSyl=lsGet('govori-pace',165), kara=null;
+/* Some voices ignore the speed setting. If a slow play comes out barely slower than a normal one,
+   slow plays switch to saying the sentence word by word, which is slow and clear on any voice. */
+let paceRaw={normal:null}, slowByWord=lsGet('govori-slow-by-word',false);
 function karaTarget(text, near){
   const want=wordsOf(text).map(x=>norm(x.w)).join(' '); if(!want) return null;
   const sel='[lang="ru"],.ru,.ruline,.big,.better,b';
@@ -743,32 +788,44 @@ function karaWrap(el){
   }
   return el._kw;
 }
+/* Vowels take longer to say than consonants, so the bar lingers on them. Returns cumulative weights 0..1 per letter edge. */
+function letterEdges(ls){
+  const wt=ls.map(l=>{ const c=l.textContent.toLowerCase()[0]; return /[аеёиоуыэюя]/.test(c)?1.7:/[ьъ]/.test(c)?0.2:1; });
+  const tot=wt.reduce((a,b)=>a+b,0)||1; let acc=0; return [0,...wt.map(x=>(acc+=x)/tot)];
+}
 function karaStop(){
   if(!kara) return;
   cancelAnimationFrame(kara.raf); clearTimeout(kara.fade);
   kara.el.classList.remove('kara-on'); kara.letters.forEach(l=>l.classList.remove('lit'));
   kara.bar.remove(); kara=null;
 }
-/* Draw the bar at position P, counted in letters from the start of the text. */
-function karaDraw(k, P){
+/* Draw the bar at word j, fraction f (0..1 of the word's sound). */
+function karaDraw(k, j, f){
   if(kara!==k) return;
-  P=Math.max(k.shown, Math.min(P, k.letters.length)); k.shown=P;
+  const ls=k.perWord[j], e=k.edges[j];
+  let li=0; while(li<ls.length-1 && f>=e[li+1]) li++;
+  let into = f>=1 ? 1 : Math.min(1,(f-e[li])/((e[li+1]-e[li])||1));
+  let P=k.first[j]+li+into;
+  if(P<k.shown) P=k.shown; k.shown=P;
   const whole=Math.floor(P);
-  for(let i=k.lit;i<k.letters.length;i++){ if(i<whole){ k.letters[i].classList.add('lit'); k.lit=i+1; } else break; }
+  for(let i=k.lit;i<k.letters.length;i++){ if(i<whole || (i===whole && P-whole>0.4)){ k.letters[i].classList.add('lit'); k.lit=i+1; } else break; }
   const at = whole<k.letters.length ? k.letters[whole] : k.letters[k.letters.length-1];
-  const r=at.getBoundingClientRect(), into = whole<k.letters.length ? P-whole : 1;
-  if(whole<k.letters.length && into>0.5 && !at.classList.contains('lit')){ at.classList.add('lit'); }
-  k.bar.style.transform=`translate(${Math.round((r.left+r.width*into-1.5)*10)/10}px,${Math.round(r.top-3)}px)`;
+  const r=at.getBoundingClientRect(), x = whole<k.letters.length ? P-whole : 1;
+  k.bar.style.transform=`translate(${Math.round((r.left+r.width*x-1.5)*10)/10}px,${Math.round(r.top-3)}px)`;
   k.bar.style.height=(r.height+6)+'px';
 }
+let curUtter=null, speakToken=0;
+function stopSpeech(){ speakToken++; if(curUtter) curUtter._cancelled=true; curUtter=null; if('speechSynthesis' in window) speechSynthesis.cancel(); karaStop(); }
 function speak(text, rate, near){
   if(!('speechSynthesis' in window) || !text) return Promise.resolve();
-  speechSynthesis.cancel(); karaStop();
-  const u=new SpeechSynthesisUtterance(text); u.lang='ru-RU'; if(ruVoice) u.voice=ruVoice;
-  u.rate = rate ?? (state.slow ? 0.72 : 0.95);
+  const busy=speechSynthesis.speaking||speechSynthesis.pending;
+  stopSpeech();
+  const token=speakToken;
+  rate = rate ?? normalRate();
+  const slow = rate < normalRate()-0.01;
   const words=wordsOf(text), el=karaTarget(text, near);
-  // pace plan, in syllable units: each word's sound, then a pause (longer after punctuation)
-  const plan=words.map((x,j)=>{ const next=words[j+1], gap=text.slice(x.i+x.w.length, next?next.i:text.length); return {say:sylCount(x.w), rest:/[,.!?;:…—]/.test(gap)?1.2:0.25}; });
+  // pace plan, in syllable units: each word's sound, then a pause (longer after punctuation, none after the last word)
+  const plan=words.map((x,j)=>{ const next=words[j+1], gap=text.slice(x.i+x.w.length, next?next.i:text.length); return {say:sylCount(x.w), rest:!next?0:/[,.!?;:…—]/.test(gap)?1.2:0.25}; });
   let k=null;
   if(el && words.length){
     const perWord=karaWrap(el);
@@ -777,45 +834,74 @@ function speak(text, rate, near){
       if(el.closest('.sheet-wrap')) bar.style.zIndex='25';
       document.body.appendChild(bar);
       const first=[]; let n=0; perWord.forEach(ls=>{ first.push(n); n+=ls.length; });
-      k=kara={el, bar, letters:perWord.flat(), perWord, first, raf:0, fade:0, t0:0, word:-1, wordAt:0, lastB:-1, lastBAt:0, boundary:false, shown:0, lit:0, done:false};
-      el.classList.add('kara-on'); karaDraw(k,0);
+      k=kara={el, bar, letters:perWord.flat(), perWord, first, edges:perWord.map(letterEdges), raf:0, fade:0, t0:0, word:0, wordAt:0, wordMs:0, lastB:-1, lastBAt:0, boundary:false, shown:0, lit:0, done:false};
+      el.classList.add('kara-on'); karaDraw(k,0,0);
     }
   }
-  const unit=()=>karaMsPerSyl/u.rate;
+  const unit=r=>karaMsPerSyl/r;
   const frame=()=>{
     if(!k||kara!==k||k.done) return;
-    const now=performance.now();
-    let j, t;
-    if(k.boundary){ j=k.word; t=now-k.wordAt; }                        // time since this word's real start
-    else { t=now-k.t0; j=0; while(j<words.length-1 && t>=(plan[j].say+plan[j].rest)*unit()){ t-=(plan[j].say+plan[j].rest)*unit(); j++; } }
-    const frac=Math.min(1, t/(plan[j].say*unit()));
-    karaDraw(k, k.first[j] + frac*k.perWord[j].length);
+    const now=performance.now()+KARA_LEAD;
+    let j, f;
+    if(k.boundary){ j=k.word; f=(now-k.wordAt)/(k.wordMs||plan[j].say*unit(rate)); }
+    else { let t=now-k.t0; j=0; while(j<words.length-1 && t>=(plan[j].say+plan[j].rest)*unit(rate)){ t-=(plan[j].say+plan[j].rest)*unit(rate); j++; } f=t/(plan[j].say*unit(rate)); }
+    karaDraw(k, j, Math.max(0,Math.min(1,f)));
     k.raf=requestAnimationFrame(frame);
   };
+  const startWord=(j, ms)=>{ // a word is starting right now (boundary event or word-by-word mode)
+    if(!k||kara!==k) return;
+    const now=performance.now();
+    if(k.lastB>=0 && j>k.lastB && !ms){ // learn this voice's real pace from the gap between word starts
+      const units=plan.slice(k.lastB,j).reduce((a,p)=>a+p.say+p.rest,0), m=(now-k.lastBAt)*rate/units;
+      if(m>40&&m<600){ karaMsPerSyl=0.6*karaMsPerSyl+0.4*m; lsSet('govori-pace',Math.round(karaMsPerSyl)); }
+    }
+    // if the bar is already partway into this word, carry on from there instead of pausing
+    const into=Math.max(0, Math.min(1,(k.shown-k.first[j])/k.perWord[j].length));
+    k.wordMs=ms||plan[j].say*unit(rate);
+    k.boundary=true; k.word=j; k.wordAt=now-into*k.wordMs; k.lastB=j; k.lastBAt=now;
+    if(!k.raf) k.raf=requestAnimationFrame(frame);
+  };
+  const finish=()=>{ if(k&&kara===k){ k.done=true; cancelAnimationFrame(k.raf); karaDraw(k,words.length-1,1); k.fade=setTimeout(()=>{ if(kara===k) karaStop(); },900); } };
+  const mkU=(t,r)=>{ const u=new SpeechSynthesisUtterance(t); u.lang='ru-RU'; if(ruVoice) u.voice=ruVoice; u.rate=r; return u; };
+
+  // Word-by-word slow mode, for voices that ignore the speed setting
+  if(slow && slowByWord && words.length>1){
+    return new Promise(res=>{
+      let j=0;
+      const next=()=>{
+        if(token!==speakToken) return res();
+        if(j>=words.length){ finish(); return res(); }
+        const u=mkU(words[j].w, Math.max(rate,0.5)); curUtter=u; const jj=j++;
+        u.onstart=()=>startWord(jj, plan[jj].say*unit(Math.max(rate,0.5))*1.15);
+        u.onend=u.onerror=()=>{ if(u._cancelled) return res(); if(k&&kara===k){ k.wordMs=Math.max(1,performance.now()-k.wordAt); } setTimeout(next, 220); };
+        speechSynthesis.speak(u);
+      };
+      setTimeout(next, busy?80:0);
+    });
+  }
+
+  const u=mkU(text, rate); curUtter=u;
   return new Promise(res=>{
-    const done=()=>{
-      if(k&&kara===k){
-        if(!k.boundary&&k.t0){ const took=performance.now()-k.t0, units=plan.reduce((a,p)=>a+p.say+p.rest,0); if(took>300&&units) karaMsPerSyl=Math.min(400,Math.max(90, 0.6*karaMsPerSyl+0.4*took*u.rate/units)); }
-        k.done=true; cancelAnimationFrame(k.raf); karaDraw(k,k.letters.length);
-        k.fade=setTimeout(()=>{ if(kara===k) karaStop(); },900);
+    u.onstart=()=>{ u._t0=performance.now(); if(k){ k.t0=u._t0; k.raf=requestAnimationFrame(frame); } };
+    u.onboundary=e=>{
+      if(e.name&&e.name!=='word') return;
+      let j=0; while(j+1<words.length && words[j+1].i<=e.charIndex) j++;
+      startWord(j);
+    };
+    u.onend=u.onerror=()=>{
+      if(!u._cancelled && u._t0){
+        const took=performance.now()-u._t0, units=plan.reduce((a,p)=>a+p.say+p.rest,0), raw=took/units;
+        if(took>250 && units){
+          if(k && !k.boundary){ karaMsPerSyl=Math.min(400,Math.max(80, 0.5*karaMsPerSyl+0.5*raw*rate)); lsSet('govori-pace',Math.round(karaMsPerSyl)); }
+          if(!slow) paceRaw.normal=raw;
+          else if(paceRaw.normal && raw < paceRaw.normal*1.35 && !slowByWord){ slowByWord=true; lsSet('govori-slow-by-word',true); toast('Your voice ignores speed changes, so slow mode now says each word separately.'); }
+        }
       }
+      if(!u._cancelled) finish();
       res();
     };
-    u.onstart=()=>{ if(k){ k.t0=performance.now(); k.raf=requestAnimationFrame(frame); } };
-    u.onboundary=e=>{
-      if(!k||kara!==k||(e.name&&e.name!=='word')) return;
-      let j=0; while(j+1<words.length && words[j+1].i<=e.charIndex) j++;
-      const now=performance.now();
-      if(k.lastB>=0 && j>k.lastB){ // learn this voice's real pace from the gap between word starts
-        const units=plan.slice(k.lastB,j).reduce((a,p)=>a+p.say+p.rest,0), ms=(now-k.lastBAt)*u.rate/units;
-        if(ms>40&&ms<600) karaMsPerSyl=0.7*karaMsPerSyl+0.3*ms;
-      }
-      // if the bar is already partway into this word, carry on from there instead of pausing
-      const into=Math.max(0, Math.min(1,(k.shown-k.first[j])/k.perWord[j].length));
-      k.boundary=true; k.word=j; k.wordAt=now-into*plan[j].say*unit(); k.lastB=j; k.lastBAt=now;
-      karaDraw(k, k.first[j]);
-    };
-    u.onend=done; u.onerror=done; speechSynthesis.speak(u);
+    // iPhone sometimes drops a new utterance spoken in the same instant as cancel()
+    if(busy) setTimeout(()=>{ if(token===speakToken) speechSynthesis.speak(u); }, 80); else speechSynthesis.speak(u);
   });
 }
 
@@ -824,7 +910,7 @@ let rec=null;
 const canRecord = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && !!(window.AudioContext||window.webkitAudioContext);
 async function startRecording(onLevel){
   if(!canRecord) throw {code:'no_mic_support'};
-  if('speechSynthesis' in window) speechSynthesis.cancel();
+  stopSpeech();
   const Ctx=window.AudioContext||window.webkitAudioContext;
   const ctx=new Ctx();                                  // created inside the tap, so iPhone allows it
   try{ await ctx.resume(); }catch(e){}
@@ -881,7 +967,7 @@ function useBrowserSR(){ if(state.checker==='ai') return false; if(state.checker
 let activeSR=null;
 function listenSR(onInterim){
   return new Promise(resolve=>{
-    if('speechSynthesis' in window) speechSynthesis.cancel();
+    stopSpeech();
     const r=new SR(); r.lang='ru-RU'; r.interimResults=true; r.maxAlternatives=4; r.continuous=false;
     let finalText='', alts=[], err=null;
     r.onresult=e=>{ let interim=''; for(let i=e.resultIndex;i<e.results.length;i++){ const res=e.results[i]; if(res.isFinal){ finalText+=res[0].transcript; alts=[...res].map(a=>a.transcript);} else interim+=res[0].transcript; } onInterim&&onInterim((finalText+interim).trim()); };
@@ -958,7 +1044,8 @@ window.addEventListener('hashchange',route);
 document.addEventListener('click',e=>{
   const g=e.target.closest('[data-go]'); if(g){ e.preventDefault(); if(g.dataset.go==='talk'){ endSessionAudio(); session=null; } go(g.dataset.go); return; }
   const s=e.target.closest('[data-say]'); if(s){ speak(s.dataset.say, undefined, s); return; }
-  const sl=e.target.closest('[data-say-slow]'); if(sl){ speak(sl.dataset.saySlow, SLOW_RATE, sl); }
+  const sv=e.target.closest('[data-save]'); if(sv){ toggleSaved(sv.dataset.save, sv.dataset.saveEn); return; }
+  const sl=e.target.closest('[data-say-slow]'); if(sl){ speak(sl.dataset.saySlow, normalRate()*SLOW_FACTOR, sl); }
 });
 function endSessionAudio(){ cancelRecording(); if(activeSR){ try{activeSR.stop();}catch(e){} } if(session&&session.ctl) session.ctl.abort(); }
 function route(){
@@ -970,6 +1057,8 @@ function route(){
   else if(v==='talk') session ? renderSession() : renderTalk();
   else if(v==='review') renderReview();
   else if(v==='words') renderWords();
+  else if(v==='saved') renderSaved();
+  else if(v==='sayings') renderSayings();
   else if(v==='settings') renderSettings();
   else renderHome();
   window.scrollTo(0,0);
@@ -977,7 +1066,7 @@ function route(){
 
 /* Pronunciation guide everywhere: after anything renders, put [pree-VYET] after Russian text
    that doesn't already have its own guide line (.tr) next to it. */
-const PH_SKIP='.kw,.kl,.ph,.tr,[data-noph],input,textarea,select,script,style,svg,.kbd,.lt,.letter-big,nav,header';
+const PH_SKIP='.kw,.say-pair,.kl,.ph,.tr,[data-noph],input,textarea,select,script,style,svg,.kbd,.lt,.letter-big,nav,header';
 const PH_RUN=/[А-яЁё\u0301]+(?:[\s,.!?…—–-]+[А-яЁё\u0301]+)*[!?.…]?/g;
 function hasOwnGuide(el){ for(let n=el,d=0;n&&d<3;n=n.parentElement,d++){ if(n.nextElementSibling&&n.nextElementSibling.classList.contains('tr')) return true; if(n.querySelector(':scope > .tr')) return true; } return false; }
 function annotateRu(root){
@@ -1163,7 +1252,7 @@ function openLetter(i){
       <dt>Sound</dt><dd>${L.sound}</dd>
       <dt>Example</dt><dd><span class="ru" style="font-size:22px">${L.word}</span> <span class="tr">${phon(L.word)}</span><br>${L.mean}</dd>
     </dl>
-    <div class="row">${playBtn(L.name,'Hear the letter')}<span>Letter</span>${playBtn(L.word,'Hear the word')}<span>Word</span></div>
+    <div class="row">${playBtn(L.name,'Hear the letter')}<span>Letter</span>${playBtn(L.word,'Hear the word',false,L.mean)}<span>Word</span></div>
     <div class="panel" style="margin-top:16px;display:flex;gap:16px;align-items:center">
       ${micBtn('lMic',84,'Say the example word')}
       <div><div style="font-weight:600">Say “${L.word}”</div><div class="heard" id="lOut">Tap the mic and say it out loud.</div></div>
@@ -1286,7 +1375,7 @@ function renderWarmup(){
   app.innerHTML=`${sessionHead()}
   <h3>Warm-up: key phrases</h3>
   <p class="muted" style="margin:6px 0 14px">Tap play to hear each one, then the mic to say it. You don’t need all six; three good ones is plenty.</p>
-  <div class="phrases">${s.phrases.map((p,i)=>`<div class="phrase ${session.said[i]?'ok':''}" id="ph${i}"><div><div class="ruline" lang="ru">${esc(p[0])}</div>${state.translit?`<div class="tr">${esc(phon(p[0]))}</div>`:''}<div class="muted" style="font-size:15px">${esc(p[1])}</div><div class="heard" id="phOut${i}"></div></div>${playBtn(p[0])}${micBtn('phMic'+i,46,'Say this phrase')}</div>`).join('')}</div>
+  <div class="phrases">${s.phrases.map((p,i)=>`<div class="phrase ${session.said[i]?'ok':''}" id="ph${i}"><div><div class="ruline" lang="ru">${esc(p[0])}</div>${state.translit?`<div class="tr">${esc(phon(p[0]))}</div>`:''}<div class="muted" style="font-size:15px">${esc(p[1])}</div><div class="heard" id="phOut${i}"></div></div>${playBtn(p[0],'Play',false,p[1])}${micBtn('phMic'+i,46,'Say this phrase')}</div>`).join('')}</div>
   <div class="row" style="margin-top:20px"><button class="btn" id="toChat">Start the conversation</button></div>`;
   bindLeave();
   s.phrases.forEach((p,i)=>{ $('#phMic'+i).onclick=async e=>{ const sc=await sayCheck(e.currentTarget,p[0].replace(/…/g,''),$('#phOut'+i)); if(sc!=null&&sc>=0.7&&session){ session.said[i]=1; $('#ph'+i).classList.add('ok'); } }; });
@@ -1365,14 +1454,14 @@ function renderChat(){
   const retryable = session.error && !['no_key','bad_key','forbidden'].includes(session.error.code);
   app.innerHTML=`${sessionHead()}
   <div class="msgs" id="msgs" aria-live="polite">${session.messages.map((m,i)=> m.who==='ai'
-    ? `<div class="msg ai"><div class="ruline" lang="ru">${esc(m.ru)}</div>${state.translit?`<div class="tr">${esc(phon(m.ru))}</div>`:''}<div class="en" ${m.showEn?'':'hidden'} id="en${i}">${esc(m.en)}</div><div class="tools">${playBtn(m.ru,'Play again')}<button data-en="${i}">${m.showEn?'Hide':'Show'} English</button></div></div>`
+    ? `<div class="msg ai"><div class="ruline" lang="ru">${esc(m.ru)}</div>${state.translit?`<div class="tr">${esc(phon(m.ru))}</div>`:''}<div class="en" ${m.showEn?'':'hidden'} id="en${i}">${esc(m.en)}</div><div class="tools">${playBtn(m.ru,'Play again',false,m.en)}<button data-en="${i}">${m.showEn?'Hide':'Show'} English</button></div></div>`
     : `<div class="msg me ${m.unclear?'unclear':''}" ${m.en?'':'lang="ru"'}>${m.voice?'<span class="vo" aria-label="spoken">🎙️</span> ':''}${esc(m.text)}${m.en&&!m.unclear?'<div style="font-size:13px;opacity:.8;margin-top:3px">in English</div>':''}</div>${m.fix?`<div class="fix"><div class="muted" style="font-size:13px">Better</div><div class="row" style="gap:10px"><span class="better" lang="ru">${esc(m.fix.better)}</span>${playBtn(m.fix.better,'Hear the correction')}</div>${m.fix.why?`<div>${esc(m.fix.why)}</div>`:''}</div>`:''}${m.pron?`<div class="fix"><div class="muted" style="font-size:13px">Pronunciation</div><div>${esc(m.pron)}</div></div>`:''}`).join('')}
     ${session.busy?`<div class="msg ai typing">${session.pending&&session.pending.audio?'Listening to you…':'Thinking…'}</div>`:''}
     ${session.error?`<div class="fb no">${esc(errCopy(session.error))}${retryable?' <button class="btn small" id="retry" style="margin-left:6px">Retry</button>':''}${['no_key','bad_key'].includes(session.error.code)?' <button class="btn small" data-go="settings" style="margin-left:6px">Open Settings</button>':''}</div>`:''}
   </div>
   ${session.done||session.learnerTurns>=10?`<div class="panel" style="margin-top:16px;text-align:center"><p style="margin-bottom:10px"><b>Nice work.</b> That’s a full conversation.</p><button class="btn" id="finish2">See my recap</button></div>`:''}
   <div class="dock">
-    ${session.showHint&&lastAi&&lastAi.suggest?`<div class="hintbox"><div class="muted" style="font-size:13px">You could say</div><div class="row" style="gap:10px"><span style="font-size:19px;font-weight:600" lang="ru">${esc(lastAi.suggest)}</span>${playBtn(lastAi.suggest,'Hear the hint')}</div>${state.translit?`<div class="tr">${esc(phon(lastAi.suggest))}</div>`:''}<div class="muted" style="font-size:15px">${esc(lastAi.suggest_en)}</div></div>`:''}
+    ${session.showHint&&lastAi&&lastAi.suggest?`<div class="hintbox"><div class="muted" style="font-size:13px">You could say</div><div class="row" style="gap:10px"><span style="font-size:19px;font-weight:600" lang="ru">${esc(lastAi.suggest)}</span>${playBtn(lastAi.suggest,'Hear the hint',false,lastAi.suggest_en)}</div>${state.translit?`<div class="tr">${esc(phon(lastAi.suggest))}</div>`:''}<div class="muted" style="font-size:15px">${esc(lastAi.suggest_en)}</div></div>`:''}
     <div id="live" class="heard" style="text-align:center;margin-bottom:6px">${session.recording?'Recording… tap to send':'Tap the mic, speak in Russian or English, tap again to send'}</div>
     <div class="dock-in">
       <div class="l" style="display:grid;gap:8px"><button class="btn quiet small" id="hint" ${lastAi&&lastAi.suggest?'':'disabled'}>${session.showHint?'Hide hint':'Hint'}</button></div>
@@ -1456,7 +1545,7 @@ Give at most 5 mistakes (only real ones) and 6 to 8 useful words.`;
     ${Array.isArray(r.wins)&&r.wins.length?`<h3>What went well</h3><ul>${r.wins.map(w=>`<li>${esc(w)}</li>`).join('')}</ul>`:''}
     <h3>Fix these</h3>${mistakes.length?mistakes.map(m=>`<div class="fix" style="max-width:none;margin-bottom:10px"><div class="muted" style="font-size:14px">You said: <span lang="ru">${esc(m.you_said||'')}</span></div><div class="row" style="gap:10px"><span class="better" lang="ru">${esc(m.better)}</span>${playBtn(m.better)}</div>${state.translit?`<div class="tr">${esc(phon(m.better))}</div>`:''}<div>${esc(m.why||'')}</div></div>`).join(''):'<p class="muted">No real mistakes this time.</p>'}
     ${Array.isArray(r.pronunciation)&&r.pronunciation.length?`<h3>Pronunciation</h3><ul>${r.pronunciation.map(w=>`<li>${esc(w)}</li>`).join('')}</ul>`:''}`;
-  body.insertAdjacentHTML('beforeend', `<h3>Words going into your review deck</h3><div class="phrases">${me.reviewWords.map(w=>`<div class="phrase" style="grid-template-columns:1fr auto"><div><span class="ruline" lang="ru">${esc(w.ru)}</span>${state.translit?` <span class="tr">${esc(phon(w.ru))}</span>`:''}<div class="muted" style="font-size:15px">${esc(w.en)}</div></div>${playBtn(w.ru)}</div>`).join('')}</div>
+  body.insertAdjacentHTML('beforeend', `<h3>Words going into your review deck</h3><div class="phrases">${me.reviewWords.map(w=>`<div class="phrase" style="grid-template-columns:1fr auto"><div><span class="ruline" lang="ru">${esc(w.ru)}</span>${state.translit?` <span class="tr">${esc(phon(w.ru))}</span>`:''}<div class="muted" style="font-size:15px">${esc(w.en)}</div></div>${playBtn(w.ru,'Play',false,w.en)}</div>`).join('')}</div>
     <div class="row" style="margin-top:22px"><button class="btn" id="toReview">Start the quick review</button>${me.recapErr&&me.recapErr.code!=='nothing'?'<button class="btn ghost" id="recapRetry">Try the recap again</button>':''}</div>`);
   $('#toReview').onclick=()=>{ me.phase='review'; renderSession(); window.scrollTo(0,0); };
   const rr=$('#recapRetry'); if(rr) rr.onclick=()=>{ me.recapErr=null; renderRecap(); };
@@ -1493,7 +1582,7 @@ function runDrills(box, items, deck, onDone, onGrade){
     if(it.type==='listen') body=`<div class="q">Listen and type what you hear</div><div class="row" style="margin-bottom:14px">${playBtn(it.ru,'Play')}</div>`;
     if(it.type==='produce') body=`<div class="q">How do you say <span style="color:var(--cobalt)">“${esc(it.en)}”</span>?</div>`;
     if(it.type==='recognize'){ const opts=shuffle([it.en,...shuffle(enPool.filter(e=>e!==it.en)).slice(0,3)]); body=`<div class="q">What does this mean?</div><div class="row" style="margin-bottom:14px"><span class="ru" style="font-size:26px" lang="ru">${esc(it.ru)}</span>${playBtn(it.ru)}</div><div class="opts">${opts.map(o=>`<button class="opt" data-o="${esc(o)}">${esc(o)}</button>`).join('')}</div>`; }
-    if(it.type==='speak') body=`<div class="q">Say this out loud</div><div class="row" style="margin-bottom:6px"><span class="ru" style="font-size:26px" lang="ru">${esc(it.ru)}</span>${playBtn(it.ru)}</div><div class="muted" style="margin-bottom:14px">${esc(it.en)}</div><div class="row">${micBtn('dMic',80,'Say it')}<div class="heard" id="dOut" style="flex:1">Tap the mic.</div></div><button class="btn quiet small" style="margin-top:12px" id="skipSpeak">I can’t speak right now</button>`;
+    if(it.type==='speak') body=`<div class="q">Say this out loud</div><div class="row" style="margin-bottom:6px"><span class="ru" style="font-size:26px" lang="ru">${esc(it.ru)}</span>${playBtn(it.ru,'Play',false,it.en)}</div><div class="muted" style="margin-bottom:14px">${esc(it.en)}</div><div class="row">${micBtn('dMic',80,'Say it')}<div class="heard" id="dOut" style="flex:1">Tap the mic.</div></div><button class="btn quiet small" style="margin-top:12px" id="skipSpeak">I can’t speak right now</button>`;
     const typed = it.type==='listen'||it.type==='produce';
     box.innerHTML=`<div class="progress-top"><div class="bar"><i style="width:${i/items.length*100}%"></i></div><span class="muted">${i+1}/${items.length}</span></div>${body}
       ${typed?`<div class="field"><input id="dIn" autocomplete="off" autocapitalize="off" spellcheck="false" lang="ru" placeholder="Type in Russian">${KBD_TOGGLE}<button class="btn" id="dCheck">Check</button></div>${kbdHTML()}`:''}<div id="dfb"></div>`;
@@ -1534,7 +1623,7 @@ function renderReview(){
     <div class="track"><div class="big">${strong}</div>Well learned</div>
   </div>
   <div class="row section">${due.length?`<button class="btn" id="startRev">Review ${Math.min(due.length,12)} words</button>`:`<span class="muted">Nothing due right now.</span><button class="btn ghost" id="practiceAny">Practice anyway</button>`}</div>
-  <section class="section"><h2>Your deck</h2><div class="phrases">${state.srs.slice().sort((a,b)=>a.due-b.due).map(c=>`<div class="phrase"><div><span class="ruline" lang="ru">${esc(c.ru)}</span>${state.translit?` <span class="tr">${esc(phon(c.ru))}</span>`:''}<div class="muted" style="font-size:15px">${esc(c.en)}</div></div><span class="tag ${c.box>=4?'done-tag':''}">${c.due<=Date.now()?'Due':'Level '+c.box}</span>${playBtn(c.ru)}</div>`).join('')}</div></section>`;
+  <section class="section"><h2>Your deck</h2><div class="phrases">${state.srs.slice().sort((a,b)=>a.due-b.due).map(c=>`<div class="phrase"><div><span class="ruline" lang="ru">${esc(c.ru)}</span>${state.translit?` <span class="tr">${esc(phon(c.ru))}</span>`:''}<div class="muted" style="font-size:15px">${esc(c.en)}</div></div><span class="tag ${c.box>=4?'done-tag':''}">${c.due<=Date.now()?'Due':'Level '+c.box}</span>${playBtn(c.ru,'Play',false,c.en)}</div>`).join('')}</div></section>`;
   const start=(cards)=>{
     const items=buildItems(cards.map(c=>({ru:c.ru,en:c.en})),Math.min(12,Math.max(cards.length,4)));
     app.innerHTML=`<button class="btn quiet small" id="stopRev">Stop</button><section class="panel" style="margin-top:14px" id="drill"></section>`;
@@ -1596,7 +1685,7 @@ Reply with ONLY JSON:
   }finally{ wordsBusy=null; }
 }
 function wordLine(ru, en){
-  return `<div class="row" style="gap:10px;align-items:flex-start"><div style="flex:1"><div class="ruline" lang="ru">${esc(unstress(ru))}</div>${state.translit?`<div class="tr">${esc(phon(ru))}</div>`:''}<div class="muted" style="font-size:15px">${esc(en)}</div></div>${playBtn(unstress(ru))}</div>`;
+  return `<div class="row" style="gap:10px;align-items:flex-start"><div style="flex:1"><div class="ruline" lang="ru">${esc(unstress(ru))}</div>${state.translit?`<div class="tr">${esc(phon(ru))}</div>`:''}<div class="muted" style="font-size:15px">${esc(en)}</div></div>${playBtn(unstress(ru),'Play',false,en)}</div>`;
 }
 function sayItHTML(key, ru){
   return `<div class="say-it">${micBtn('wMic-'+key,72,'Say it back')}<div style="flex:1"><div style="font-weight:600">Say it back</div><div class="heard" id="wOut-${key}">Listen first, then tap the mic and say the whole sentence.</div></div></div>`;
@@ -1610,7 +1699,7 @@ function showWord(w){
   box.innerHTML=`<article class="panel wcard">
     <div class="row" style="justify-content:space-between;align-items:flex-start">
       <div><div class="big" lang="ru">${esc(unstress(w.word.ru))}</div>${state.translit?`<div class="tr">${esc(phon(w.word.ru))}</div>`:''}</div>
-      ${playBtn(unstress(w.word.ru),'Hear the word')}
+      ${playBtn(unstress(w.word.ru),'Hear the word',false,w.word.en)}
     </div>
     <p style="margin:8px 0 0"><b>${esc(w.word.en)}</b>${w.word.info?` <span class="muted">· ${esc(w.word.info)}</span>`:''}</p>
     ${w.when?`<div class="wblock"><div class="lbl">When to use it</div><p style="margin:0">${esc(w.when)}</p></div>`:''}
@@ -1628,6 +1717,99 @@ function showWord(w){
     toast(n?`Added ${n} to your review deck.`:'Already in your review deck.');
   };
   $('#wDel',box).onclick=()=>{ state.words=state.words.filter(x=>x.id!==w.id); save(); renderWords(); };
+}
+
+/* ============ Saved: bookmarked words and phrases ============ */
+function renderSaved(){
+  const list=state.saved;
+  app.innerHTML=`<h1>Saved</h1>
+  <p class="lead" style="margin-top:8px">Words and phrases you bookmarked. Tap the bookmark next to any speaker button to add or remove one.</p>
+  ${list.length?`<div class="row section"><button class="btn" id="svPractice" ${list.filter(x=>x.en).length?'':'disabled'}>Practice these</button><button class="btn ghost" id="svDeck">Add all to review deck</button></div>
+  <section class="section" id="svDrill" hidden></section>
+  <div class="phrases section" id="svList">${list.map((x,i)=>`<div class="phrase" style="grid-template-columns:1fr auto"><div><div class="ruline" lang="ru">${esc(x.ru)}</div>${state.translit?`<div class="tr">${esc(phon(x.ph||x.ru))}</div>`:''}${x.en?`<div class="muted" style="font-size:15px">${esc(x.en)}</div>`:''}</div>${playBtn(x.ru,'Play',false,x.en)}</div>`).join('')}</div>`
+  :`<div class="panel section"><p style="margin:0">Nothing saved yet. Look for the bookmark <span class="say-pair sm" style="margin:0 4px">${saveBtn('—')}</span> next to the speaker buttons in lessons, conversations, Words and Wisdom.</p></div>`}`;
+  const empty=$('#app .panel .save-btn'); if(empty) empty.disabled=true;
+  // removing a bookmark here takes the row away
+  $$('#svList .save-btn').forEach(b=>b.addEventListener('click',()=>setTimeout(renderSaved,0)));
+  const dk=$('#svDeck'); if(dk) dk.onclick=()=>{ const n=addWords(list.filter(x=>x.en)); toast(n?`Added ${n} to your review deck.`:'They’re already in your review deck (items need an English meaning).'); };
+  const pr=$('#svPractice'); if(pr) pr.onclick=()=>{
+    const pool=list.filter(x=>x.en), box=$('#svDrill');
+    box.hidden=false; box.className='section panel'; $('#svList').hidden=true; pr.parentElement.hidden=true;
+    const items=buildItems(shuffle(pool).slice(0,8).map(x=>({ru:x.ru,en:x.en})), Math.min(10,Math.max(pool.length,4)));
+    runDrills(box, items, pool, (right,total)=>{ addXP(right); box.innerHTML=`<h2>Practice done</h2><p>${right} of ${total} right. +${right} XP.</p><button class="btn" id="svBack">Back to saved</button>`; $('#svBack').onclick=renderSaved; });
+  };
+}
+
+/* ============ Wisdom: Russian proverbs, idioms and sayings ============ */
+const SAYING_KINDS=[
+  ['mix','A mix','proverbs, idioms, everyday sayings and vivid metaphors'],
+  ['proverb','Proverbs','пословицы: complete folk sayings with a lesson'],
+  ['idiom','Idioms','фразеологизмы: fixed expressions whose meaning isn’t literal'],
+  ['saying','Everyday sayings','поговорки and set phrases people use in daily conversation'],
+  ['metaphor','Metaphors','vivid figurative images and comparisons Russians use'],
+];
+let sayingsKind='mix', sayingsBusy=null;
+function sayingCard(x, i){
+  return `<article class="panel saying" id="sy${i}">
+    <div class="row" style="justify-content:space-between;align-items:flex-start;gap:10px">
+      <div style="flex:1"><div class="ruline" lang="ru" style="font-size:22px;font-weight:700">${esc(unstress(x.ru))}</div>${state.translit?`<div class="tr">${esc(phon(x.ru))}</div>`:''}</div>
+      ${playBtn(unstress(x.ru),'Hear the saying',false,x.meaning)}
+    </div>
+    <dl>
+      ${x.literal?`<dt>Literally</dt><dd class="lit-line">“${esc(x.literal)}”</dd>`:''}
+      <dt>Means</dt><dd>${esc(x.meaning)}</dd>
+      ${x.equivalent?`<dt>In English</dt><dd>${esc(x.equivalent)}</dd>`:''}
+      ${x.when?`<dt>When</dt><dd>${esc(x.when)}</dd>`:''}
+      ${x.culture?`<dt>Culture</dt><dd>${esc(x.culture)}</dd>`:''}
+    </dl>
+    ${x.example&&x.example.ru?`<div class="wblock"><div class="lbl">In a conversation</div>${wordLine(x.example.ru,x.example.en||'')}</div>`:''}
+    <div class="wblock"><div class="lbl">Say it back</div><div class="say-it" style="margin-top:4px">${micBtn('syMic'+i,64,'Say the saying')}<div class="heard" id="syOut${i}" style="flex:1">Play it, then say the saying out loud.</div></div></div>
+  </article>`;
+}
+function renderSayings(){
+  const has=getKey();
+  app.innerHTML=`<h1>Wisdom</h1>
+  <p class="lead" style="margin-top:8px">Пословицы и поговорки: the proverbs, idioms and images Russians actually use, with what they mean, when to say them, and the culture behind them.</p>
+  ${has?'':`<div class="fb mid" style="margin-top:14px">Wisdom needs your free Gemini key. <button class="btn small" data-go="settings" style="margin-left:6px">Add it</button></div>`}
+  <section class="panel section stack">
+    <div class="chips" id="syKinds">${SAYING_KINDS.map(([k,l])=>`<button type="button" data-k="${k}" aria-pressed="${sayingsKind===k}">${l}</button>`).join('')}</div>
+    <div class="field"><input id="syTopic" maxlength="60" placeholder="Topic, optional: work, love, food, weather…"></div>
+    <div class="row"><button class="btn" id="syGo" ${has?'':'disabled'}>Show me 3</button><span class="muted" id="syStatus" style="font-size:15px"></span></div>
+  </section>
+  <div class="stack section" id="syList">${state.sayings.map((x,i)=>sayingCard(x,i)).join('')}</div>`;
+  $$('#syKinds button').forEach(b=>b.onclick=()=>{ sayingsKind=b.dataset.k; $$('#syKinds button').forEach(x=>x.setAttribute('aria-pressed',String(x===b))); });
+  $('#syGo').onclick=()=>getSayings($('#syTopic').value.trim());
+  bindSayingMics();
+}
+function bindSayingMics(){
+  state.sayings.forEach((x,i)=>{ const m=$('#syMic'+i); if(m) m.onclick=async e=>{
+    const score=await sayCheck(e.currentTarget, unstress(x.ru), $('#syOut'+i));
+    if(score!=null && score>=0.8 && !x.said){ x.said=1; addXP(3); save(); toast('+3 XP. Well said.'); }
+  }; });
+}
+async function getSayings(topic){
+  if(sayingsBusy) return;
+  const st=$('#syStatus'), go=$('#syGo'); go.disabled=true; st.textContent='Finding some good ones…';
+  const kind=SAYING_KINDS.find(k=>k[0]===sayingsKind);
+  const seen=state.sayings.slice(0,40).map(x=>unstress(x.ru));
+  sayingsBusy=new AbortController();
+  try{
+    const r=await gemini({models:QUICK_MODELS, temperature:0.9, signal:sayingsBusy.signal, contents:[{role:'user',parts:[{text:
+`You teach Russian language and culture to an English-speaking beginner.
+Give 3 Russian ${kind[2]}${topic?` about or related to: "${topic}"`:''}.
+Only use real, well-known expressions that native Russian speakers genuinely use today. Never invent or paraphrase one. Prefer short ones a beginner can say.
+${seen.length?`Don't repeat any of these: ${seen.join(' | ')}`:''}
+In every Russian string, put a combining acute accent (U+0301) right after the stressed vowel of each word with more than one syllable. Never mark ё.
+Reply with ONLY JSON: {"items":[{"ru":"the expression","literal":"word-for-word English","meaning":"what it really means, plain English","equivalent":"closest English saying, or empty string if none","when":"one sentence on when people say it and how formal it is","culture":"one or two sentences of cultural background, or empty string","example":{"ru":"a short, natural line of dialogue using it","en":"English translation"}}]}`}]}]});
+    const items=(r&&Array.isArray(r.items)?r.items:[]).filter(x=>x&&x.ru&&x.meaning).map(x=>({ru:String(x.ru),literal:String(x.literal||''),meaning:String(x.meaning),equivalent:String(x.equivalent||''),when:String(x.when||''),culture:String(x.culture||''),example:x.example&&x.example.ru?{ru:String(x.example.ru),en:String(x.example.en||'')}:null}))
+      .filter(x=>!state.sayings.some(y=>norm(y.ru)===norm(x.ru)));
+    if(!items.length) throw {code:'bad_json'};
+    state.sayings=[...items,...state.sayings].slice(0,60); save();
+    if((location.hash||'')==='#sayings'){ renderSayings(); $('#syList').scrollIntoView({behavior:'smooth'}); }
+  }catch(e){
+    if(e&&e.code==='cancelled') return;
+    st.innerHTML=`<span class="score bad">${esc(errCopy(e))}</span>`; go.disabled=false;
+  }finally{ sayingsBusy=null; }
 }
 
 updateChips();
