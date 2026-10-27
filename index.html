@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://generativelanguage.googleapis.com; img-src 'self' data: blob:; media-src 'self' blob: data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
 <title>Говори: speak Russian</title>
 <meta name="theme-color" content="#2443B5">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -33,15 +35,15 @@
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --bg:#0A1430; --surface:#12224A; --ink:#E9EEFB; --muted:#9DA9CC; --line:#253A70;
-    --cobalt:#8099F5; --cobalt-ink:#0A1430; --cobalt-soft:#1C2F66; --amber:#F2B24F; --amber-soft:#3A2D16;
+    --bg:#050B1E; --surface:#0C1736; --ink:#E9EEFB; --muted:#9DA9CC; --line:#1C2B58;
+    --cobalt:#8099F5; --cobalt-ink:#050B1E; --cobalt-soft:#15255A; --amber:#F2B24F; --amber-soft:#3A2D16;
     --good:#62C891; --good-soft:#163B2A; --bad:#F38B82; --bad-soft:#44201E;
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#0A1430; --surface:#12224A; --ink:#E9EEFB; --muted:#9DA9CC; --line:#253A70;
-  --cobalt:#8099F5; --cobalt-ink:#0A1430; --cobalt-soft:#1C2F66; --amber:#F2B24F; --amber-soft:#3A2D16;
+  --bg:#050B1E; --surface:#0C1736; --ink:#E9EEFB; --muted:#9DA9CC; --line:#1C2B58;
+  --cobalt:#8099F5; --cobalt-ink:#050B1E; --cobalt-soft:#15255A; --amber:#F2B24F; --amber-soft:#3A2D16;
   --good:#62C891; --good-soft:#163B2A; --bad:#F38B82; --bad-soft:#44201E;
   color-scheme:dark;
 }
@@ -530,8 +532,10 @@ function phonWord(raw){
   });
   return sylls.join('-');
 }
+const phonCache=new Map();
+function phonCached(w){ let r=phonCache.get(w); if(r===undefined){ r=phonWord(w); if(phonCache.size>5000) phonCache.clear(); phonCache.set(w,r); } return r; }
 function phon(s){
-  return String(s||'').replace(/[А-яЁё́]+/g, phonWord).replace(/[«»]/g,'');
+  return String(s||'').replace(/[А-яЁё́]+/g, phonCached).replace(/[«»]/g,'');
 }
 function norm(s){ return String(s || '').replace(/\u0301/g,'').toLowerCase().replace(/ё/g,'е').replace(/[’']/g,'').replace(/[^\p{L}\p{N}\s]/gu,' ').replace(/\s+/g,' ').trim(); }
 function lev(a,b){
@@ -591,17 +595,58 @@ const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platfor
 const isStandalone = window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone===true;
 
 /* ============ State ============ */
-const DEFAULT_STATE = {xp:0,streak:0,lastDay:null,todayXp:0,todayDate:null,goal:30,letters:{},grammar:{},talks:{},srs:[],words:[],saved:[],sayings:[],slow:true,translit:true,checker:'auto',model:'',updatedAt:0};
+const BOX_DAYS=[0,1,3,7,14,30,60];
+const DEFAULT_STATE = {xp:0,streak:0,lastDay:null,todayXp:0,todayDate:null,goal:30,letters:{},grammar:{},talks:{},srs:[],words:[],saved:[],sayings:[],createdAt:0,lastBackup:0,backupSnooze:0,slow:true,translit:true,checker:'auto',model:'',updatedAt:0};
 let state = loadLocal();
 function loadLocal(){
-  try{ const raw=localStorage.getItem('govori-state'); if(raw) return {...DEFAULT_STATE, ...JSON.parse(raw)}; }catch(e){}
-  return {...DEFAULT_STATE};
+  let d=null;
+  try{ const raw=localStorage.getItem('govori-state'); if(raw) d=JSON.parse(raw); }catch(e){}
+  const st=sanitizeState(d);
+  if(!st.createdAt) st.createdAt=Date.now();
+  return st;
+}
+/* Everything loaded from storage or a backup file goes through here: known fields only, right types, sane sizes.
+   A hand-edited backup can't smuggle HTML or odd values into the page. */
+function cleanStr(v,max=500){ return typeof v==='string'?v.slice(0,max):''; }
+function cleanNum(v,def,min,max){ v=Number(v); return Number.isFinite(v)?Math.min(max,Math.max(min,v)):def; }
+function cleanDay(v){ return typeof v==='string'&&/^\d{4}-\d{1,2}-\d{1,2}$/.test(v)?v:null; }
+function cleanFlags(o){ const r={}; if(o&&typeof o==='object'&&!Array.isArray(o)) for(const k of Object.keys(o).slice(0,500)) if(k.length<=40) r[k]=1; return r; }
+function sanitizeState(d){
+  if(!d||typeof d!=='object'||Array.isArray(d)) d={};
+  const arr=(v,n)=>Array.isArray(v)?v.filter(x=>x&&typeof x==='object').slice(0,n):[];
+  const pair=(x,max=300)=>({ru:cleanStr(x&&x.ru,max),en:cleanStr(x&&x.en,max)});
+  const T=8.64e15;
+  return {
+    xp:cleanNum(d.xp,0,0,1e7), streak:cleanNum(d.streak,0,0,1e5), lastDay:cleanDay(d.lastDay),
+    todayXp:cleanNum(d.todayXp,0,0,1e6), todayDate:cleanDay(d.todayDate), goal:[20,30,50].includes(+d.goal)?+d.goal:30,
+    letters:cleanFlags(d.letters), grammar:cleanFlags(d.grammar), talks:cleanFlags(d.talks),
+    srs:arr(d.srs,5000).map(c=>({...pair(c),box:Math.floor(cleanNum(c.box,0,0,BOX_DAYS.length-1)),due:cleanNum(c.due,0,0,T)})).filter(c=>c.ru&&c.en),
+    words:arr(d.words,100).map(w=>({
+      id:cleanStr(w.id,24).replace(/[^a-z0-9]/gi,'')||Math.random().toString(36).slice(2,10),
+      input:cleanStr(w.input,60), sentenceIn:cleanStr(w.sentenceIn,200),
+      word:{...pair(w.word),info:cleanStr(w.word&&w.word.info,200)},
+      sentence:w.sentence&&w.sentence.ru?pair(w.sentence,400):null, when:cleanStr(w.when,1000), example:pair(w.example,400),
+      said:Array.isArray(w.said)?w.said.filter(x=>x==='mine'||x==='ex'):[]})).filter(w=>w.word.ru&&w.example.ru),
+    saved:arr(d.saved,1000).map(x=>({ru:cleanStr(x.ru,400),ph:cleanStr(x.ph,400),en:cleanStr(x.en,400),at:cleanNum(x.at,0,0,T)})).filter(x=>x.ru),
+    sayings:arr(d.sayings,60).map(x=>({ru:cleanStr(x.ru,300),literal:cleanStr(x.literal,400),meaning:cleanStr(x.meaning,400),equivalent:cleanStr(x.equivalent,300),
+      when:cleanStr(x.when,600),culture:cleanStr(x.culture,800),example:x.example&&x.example.ru?pair(x.example,400):null,said:x.said?1:0})).filter(x=>x.ru&&x.meaning),
+    slow:d.slow!==false, translit:d.translit!==false, checker:['auto','browser','ai'].includes(d.checker)?d.checker:'auto',
+    model:typeof d.model==='string'&&/^[\w.\-]{0,80}$/.test(d.model)?d.model:'',
+    updatedAt:cleanNum(d.updatedAt,0,0,T), createdAt:cleanNum(d.createdAt,0,0,T), lastBackup:cleanNum(d.lastBackup,0,0,T), backupSnooze:cleanNum(d.backupSnooze,0,0,T),
+  };
 }
 function save(){
   state.updatedAt=Date.now();
   try{ localStorage.setItem('govori-state', JSON.stringify(state)); }catch(e){}
   updateChips();
+  if(!persistAsked && (state.xp>0 || state.saved.length)){ persistAsked=true; askPersist(); }
 }
+/* Ask the browser to protect our storage from automatic clean-up. Browsers decide on their own;
+   some grant it quietly, some never do. */
+let persistAsked=false;
+async function askPersist(){ try{ if(navigator.storage&&navigator.storage.persist&&!(await navigator.storage.persisted())) await navigator.storage.persist(); }catch(e){} }
+async function storageProtected(){ try{ return navigator.storage&&navigator.storage.persisted ? await navigator.storage.persisted() : null; }catch(e){ return null; } }
+function lsDel(k){ try{ localStorage.removeItem(k); }catch(e){} }
 /* Light/dark theme toggle. Without a saved choice it follows the system setting. */
 const darkMQ = window.matchMedia('(prefers-color-scheme: dark)');
 function isDark(){ const t=document.documentElement.dataset.theme; return t ? t==='dark' : darkMQ.matches; }
@@ -638,7 +683,6 @@ function updateChips(){
 }
 
 /* Spaced repetition */
-const BOX_DAYS=[0,1,3,7,14,30,60];
 function addWords(list){
   let added=0;
   for(const w of list){
@@ -721,6 +765,8 @@ function errCopy(e){
   if(code==='bad_json') return 'Your partner’s answer came back garbled. Tap Retry.';
   if(code==='server') return 'Google’s servers had a hiccup. Tap Retry.';
   if(code==='mic_denied') return micDeniedCopy();
+  if(code==='interrupted') return 'The app closed before your partner answered. Tap Retry.';
+  if(code==='interrupted_audio') return 'The app closed before your last recording was sent. Tap the mic and say it again.';
   return 'Something went wrong ('+(code||'unknown')+'). Tap Retry.';
 }
 function micDeniedCopy(){
@@ -1145,7 +1191,8 @@ function renderSettings(){
     <h2>This device</h2>
     <div class="switch status"><span>Russian voice</span><span class="${ruVoice?'':'muted'}">${ruVoice?esc(ruVoice.name):('speechSynthesis' in window?(isIOS?'Default voice. For a better one: Settings, Accessibility, Spoken Content, Voices, Russian.':'Default voice. Add a Russian voice in your system settings for clearer audio.'):'Not available')}</span></div>
     <div class="switch status"><span>Microphone</span><span>${canRecord?(location.protocol==='https:'||location.hostname==='localhost'?'Ready':'Needs the https web address to work'):'Not supported in this browser'}</span></div>
-    <div class="switch status"><span>Progress backup</span><span class="row" style="justify-content:flex-end"><button class="btn quiet small" id="exportBtn">Save a backup</button><label class="btn quiet small" style="cursor:pointer">Restore<input type="file" id="importIn" accept="application/json" hidden></label></span></div>
+    <div class="switch status"><span>Progress storage</span><span id="persistStat" class="muted">Checking…</span></div>
+    <div class="switch status"><span>Progress backup<br><span class="muted" style="font-size:14px">${state.lastBackup?'Last saved '+new Date(state.lastBackup).toLocaleDateString():'Never saved'}</span></span><span class="row" style="justify-content:flex-end"><button class="btn quiet small" id="exportBtn">Save a backup</button><label class="btn quiet small" style="cursor:pointer">Restore<input type="file" id="importIn" accept="application/json" hidden></label></span></div>
   </section>
   <details class="section panel"><summary style="font-weight:600;cursor:pointer">Advanced</summary>
     <p class="muted" style="margin-top:10px">Model used for conversations. Leave blank for automatic. If Google renames its models, paste a current Flash model name from Google AI Studio here.</p>
@@ -1159,18 +1206,46 @@ function renderSettings(){
   $$('#goalSeg button').forEach(b=>b.onclick=()=>{state.goal=+b.dataset.g;save();renderSettings();});
   $$('#chkSeg button').forEach(b=>b.onclick=()=>{state.checker=b.dataset.c;save();renderSettings();});
   $('#modelSave').onclick=()=>{ state.model=$('#modelIn').value.trim(); missingModels.clear(); save(); toast(state.model?'Saved. Conversations will use '+state.model+'.':'Saved. Back to automatic.'); };
-  $('#exportBtn').onclick=()=>{
-    const blob=new Blob([JSON.stringify(state,null,1)],{type:'application/json'});
-    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='govori-progress-'+todayKey()+'.json'; document.body.appendChild(a); a.click(); a.remove();
-  };
+  $('#exportBtn').onclick=()=>{ exportBackup(); renderSettings(); };
+  storageProtected().then(p=>{ const el=$('#persistStat'); if(el) el.textContent = p===true ? 'Protected: the browser won’t clear it on its own' : p===false ? 'Saved on this device. The browser may clear it if space runs low, so keep a backup.' : 'Saved on this device'; });
   $('#importIn').onchange=async e=>{
-    const f=e.target.files[0]; if(!f) return;
-    try{ const d=JSON.parse(await f.text()); if(typeof d!=='object'||!Array.isArray(d.srs)) throw 0; state={...DEFAULT_STATE,...d}; save(); toast('Progress restored.'); renderSettings(); }
+    const f=e.target.files[0]; if(!f) return; if(f.size>5e6){ toast('That file is too big to be a Говори backup.'); return; }
+    try{ const d=JSON.parse(await f.text()); if(typeof d!=='object'||!Array.isArray(d.srs)) throw 0; state=sanitizeState(d); if(!state.createdAt) state.createdAt=Date.now(); save(); toast('Progress restored.'); renderSettings(); }
     catch(_){ toast('That file isn’t a Говори backup.'); }
   };
 }
 
+/* The backup file holds progress only. The Gemini key is kept separately and is never put in it. */
+function exportBackup(){
+  state.lastBackup=Date.now(); save();
+  const blob=new Blob([JSON.stringify(state,null,1)],{type:'application/json'}), url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='govori-progress-'+todayKey()+'.json'; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+  toast('Backup saved. Keep the file somewhere safe, like iCloud Drive or Google Drive.');
+}
+
 /* ============ Home ============ */
+const WEEK=7*864e5;
+function backupNagHTML(){
+  const now=Date.now();
+  if(state.xp<20 || now<state.backupSnooze || now-Math.max(state.lastBackup,state.createdAt)<WEEK) return '';
+  return `<section class="panel section" id="bkNag"><b>Back up your progress?</b><p class="muted" style="margin:6px 0 12px">It’s all saved on this device. A backup file lets you get it back if the browser clears it or you switch phones.</p><div class="row"><button class="btn small" id="bkNow">Save a backup</button><button class="btn quiet small" id="bkLater">Remind me next week</button></div></section>`;
+}
+function resumeCardHTML(){
+  const items=[];
+  if(session) items.push(`<button class="btn small" data-go="talk">Continue “${esc(session.sc.title)}”</button>`);
+  const d=lsGet('govori-drill',null);
+  if(d&&d.ctx){
+    const where = d.ctx==='review'?['review','your review'] : d.ctx==='saved'?['saved','practicing saved words'] : d.ctx.startsWith('grammar:')?['grammar','your grammar lesson'] : null;
+    if(where && !(d.ctx.startsWith('session:')) ) items.push(`<button class="btn small ghost" data-resume="${esc(where[0])}">Finish ${esc(where[1])} (${(d.i|0)+1}/${d.total|0})</button>`);
+  }
+  return items.length?`<section class="panel section"><b>Pick up where you left off</b><div class="row" style="margin-top:10px">${items.join('')}</div></section>`:'';
+}
+function bindHomeExtras(){
+  const bn=$('#bkNow'); if(bn) bn.onclick=()=>{ exportBackup(); $('#bkNag').remove(); };
+  const bl=$('#bkLater'); if(bl) bl.onclick=()=>{ state.backupSnooze=Date.now()+WEEK; save(); $('#bkNag').remove(); };
+  $$('[data-resume]').forEach(b=>b.onclick=()=>go(b.dataset.resume));
+}
 function renderHome(){
   rollDay();
   const lettersDone=Object.keys(state.letters).length, gDone=Object.keys(state.grammar).length, tDone=Object.keys(state.talks).length, due=dueCards().length;
@@ -1194,6 +1269,8 @@ function renderHome(){
       <div class="num">${state.todayXp}/${state.goal}<br><span class="muted" style="font-weight:500">XP today</span></div>
     </div>
   </section>
+  ${resumeCardHTML()}
+  ${backupNagHTML()}
   ${iosTip}
   ${getKey()?'':keyCardHTML()}
   <section class="section panel">
@@ -1214,6 +1291,7 @@ function renderHome(){
   </section>
   <div class="section"><button class="btn quiet" data-go="settings">Settings</button></div>`;
   bindKeyCard(()=>renderHome());
+  bindHomeExtras();
   $('#step1').onclick=()=>{ if(step1.lesson){ pendingLesson=step1.lesson; go('grammar'); } else go(step1.go); };
   $('#step2').onclick=()=>startSession(nextTalk);
 }
@@ -1300,7 +1378,8 @@ function renderGrammar(){
   <p class="lead" style="margin-top:8px">One small idea at a time. Read it, drill it, then use it right away in a short conversation.</p>
   <ul class="list" style="margin-top:18px">${LESSONS.map((l,i)=>`<li><button class="item" data-lesson="${l.id}"><span class="em">${l.emoji}</span><span><span class="t">${i+1}. ${esc(l.title)}</span><br><span class="s ru">${esc(l.ru)}</span></span>${state.grammar[l.id]?'<span class="tag done-tag">Done</span>':'<span class="tag">New</span>'}</button></li>`).join('')}</ul>`;
   $$('[data-lesson]').forEach(b=>b.onclick=()=>openLesson(b.dataset.lesson));
-  if(pendingLesson){ const id=pendingLesson; pendingLesson=null; openLesson(id); }
+  if(pendingLesson){ const id=pendingLesson; pendingLesson=null; openLesson(id); return; }
+  const kept=lsGet('govori-drill',null); if(kept&&typeof kept.ctx==='string'&&kept.ctx.startsWith('grammar:')){ const id=kept.ctx.slice(8); if(LESSONS.some(l=>l.id===id)) openLesson(id); }
 }
 function sayable(t){ return /[А-яЁё]/.test(t) ? playBtn(t.replace(/\(.*?\)/g,'').replace(/[:→]/g,' '),'Play',true) : ''; }
 function openLesson(id){
@@ -1316,8 +1395,12 @@ function openLesson(id){
 }
 function runGrammarDrills(L, box){
   let i=0, right=0;
+  const ctx='grammar:'+L.id, kept=lsGet('govori-drill',null);
+  if(kept&&kept.ctx===ctx&&kept.i<L.drills.length){ i=kept.i|0; right=kept.right|0; }
   const next=()=>{
+    if(i<L.drills.length) lsSet('govori-drill',{ctx,i,right,total:L.drills.length});
     if(i===L.drills.length){
+      lsDel('govori-drill');
       const first=!state.grammar[L.id]; state.grammar[L.id]=1; addXP(first?10:3);
       box.innerHTML=`<h2>Lesson done</h2><p>${right} of ${L.drills.length} right. ${first?'+10 XP.':'+3 XP.'}</p>
       <p class="muted">Now lock it in. Your AI partner will steer a short chat toward this exact pattern.</p>
@@ -1362,8 +1445,24 @@ function startSession(sc){
 }
 function phaseBar(){ const ps=session.sc.phrases?['warmup','chat','recap','review']:['chat','recap','review']; const idx=ps.indexOf(session.phase); return `<div class="phase" aria-hidden="true">${ps.map((p,i)=>`<span class="${i<=idx?'on':''}"></span>`).join('')}</div>`; }
 function sessionHead(){ const s=session.sc; return `<div class="convo-head"><span class="em">${s.emoji}</span><div style="flex:1"><h2 style="margin:0">${esc(s.title)}</h2><div class="muted" style="font-size:15px">${esc(s.goal)}</div></div><button class="btn quiet small" id="leave">Leave</button></div>${phaseBar()}`; }
-function bindLeave(){ const lv=$('#leave'); if(lv) lv.onclick=()=>{ endSessionAudio(); session=null; renderTalk(); window.scrollTo(0,0); }; }
+function bindLeave(){ const lv=$('#leave'); if(lv) lv.onclick=()=>{ endSessionAudio(); session=null; persistSession(); lsDel('govori-drill'); renderTalk(); window.scrollTo(0,0); }; }
+/* The conversation in progress is saved too, so a reload or closing the app picks up mid-chat.
+   A recording that hadn't been sent yet can't be kept (too big), so the learner is asked to say it again. */
+function persistSession(){
+  if(!session){ lsDel('govori-session'); return; }
+  const {ctl, ...rest}=session, copy={...rest, recording:false};
+  if(copy.busy){ copy.busy=false; copy.error={code: copy.pending&&copy.pending.audio?'interrupted_audio':'interrupted'}; }
+  if(copy.pending&&copy.pending.audio) copy.pending=null;
+  lsSet('govori-session', copy);
+}
+function restoreSession(){
+  const d=lsGet('govori-session',null);
+  if(!d||!d.sc||typeof d.sc.title!=='string'||!Array.isArray(d.messages)||!Array.isArray(d.history)) return null;
+  const sc=SCENARIOS.find(x=>x.id===d.sc.id) || d.sc;
+  return {...d, sc, busy:false, recording:false, ctl:null};
+}
 function renderSession(){
+  persistSession();
   if(!session) return renderTalk();
   if(session.phase==='warmup') renderWarmup();
   else if(session.phase==='chat') renderChat();
@@ -1451,7 +1550,8 @@ function renderChat(){
   if(!session.started){ session.started=true; aiTurn(); return; }
   const lastAi=[...session.messages].reverse().find(m=>m.who==='ai');
   const canFinish = session.learnerTurns>=3;
-  const retryable = session.error && !['no_key','bad_key','forbidden'].includes(session.error.code);
+  const retryable = session.error && !['no_key','bad_key','forbidden','interrupted_audio'].includes(session.error.code);
+  persistSession();
   app.innerHTML=`${sessionHead()}
   <div class="msgs" id="msgs" aria-live="polite">${session.messages.map((m,i)=> m.who==='ai'
     ? `<div class="msg ai"><div class="ruline" lang="ru">${esc(m.ru)}</div>${state.translit?`<div class="tr">${esc(phon(m.ru))}</div>`:''}<div class="en" ${m.showEn?'':'hidden'} id="en${i}">${esc(m.en)}</div><div class="tools">${playBtn(m.ru,'Play again',false,m.en)}<button data-en="${i}">${m.showEn?'Hide':'Show'} English</button></div></div>`
@@ -1532,6 +1632,7 @@ Reply with ONLY a JSON object:
 "words":[{"ru":"Russian word or short phrase from this conversation","en":"English"}]}
 Give at most 5 mistakes (only real ones) and 6 to 8 useful words.`;
       try{ me.recap=await gemini({contents:[{role:'user',parts:[{text:prompt}]}], temperature:0.4}); }catch(e){ me.recapErr=e; }
+      if(session===me) persistSession();
     }
     if(session!==me || me.phase!=='recap') return;
   }
@@ -1563,20 +1664,25 @@ function renderSessionReview(){
   app.innerHTML=`${sessionHead()}<section class="panel" id="drill"></section>`;
   bindLeave();
   runDrills($('#drill'), buildItems(words,6), words, (right,total)=>{
+    session=null; persistSession();
     const id=me.sc.id, scored=!id.startsWith('g-')&&id!=='free';
     const first=scored && !state.talks[id]; if(scored) state.talks[id]=1;
     const added=addWords(words); const xp=(first?15:6)+right; addXP(xp);
     $('#drill').innerHTML=`<h2>Conversation complete</h2><p>${right} of ${total} in the review. +${xp} XP. ${added?added+' new words added to your deck.':''}</p><div class="row"><button class="btn" id="again">Talk again</button><button class="btn ghost" data-go="talk">More conversations</button></div>`;
     $('#again').onclick=()=>startSession(me.sc);
-  });
+  }, null, 'session:'+me.sc.id);
 }
 
 /* ============ Drill engine ============ */
-function runDrills(box, items, deck, onDone, onGrade){
+/* ctx names a drill that should survive a reload ('review', 'saved', 'session:<id>'). */
+function runDrills(box, items, deck, onDone, onGrade, ctx){
   let i=0, right=0;
+  const kept=ctx&&lsGet('govori-drill',null);
+  if(kept&&kept.ctx===ctx&&Array.isArray(kept.items)&&kept.i<kept.items.length){ items=kept.items; i=kept.i|0; right=kept.right|0; }
   const enPool=[...new Set([...deck.map(w=>w.en), ...SCENARIOS.flatMap(s=>s.phrases.map(p=>p[1]))])];
   const next=()=>{
-    if(i>=items.length){ onDone(right,items.length); return; }
+    if(i>=items.length){ if(ctx) lsDel('govori-drill'); onDone(right,items.length); return; }
+    if(ctx) lsSet('govori-drill',{ctx,items,i,right,total:items.length});
     const it=items[i];
     let body='';
     if(it.type==='listen') body=`<div class="q">Listen and type what you hear</div><div class="row" style="margin-bottom:14px">${playBtn(it.ru,'Play')}</div>`;
@@ -1611,6 +1717,7 @@ function runDrills(box, items, deck, onDone, onGrade){
 function renderReview(){
   const due=dueCards(), total=state.srs.length;
   if(!total){
+    lsDel('govori-drill');
     app.innerHTML=`<h1>Review</h1><p class="lead" style="margin-top:8px">Your deck is empty. Words and phrases land here after each conversation, then come back right before you’d forget them.</p><button class="btn" style="margin-top:16px" data-go="talk">Start a conversation</button>`;
     return;
   }
@@ -1627,13 +1734,18 @@ function renderReview(){
   const start=(cards)=>{
     const items=buildItems(cards.map(c=>({ru:c.ru,en:c.en})),Math.min(12,Math.max(cards.length,4)));
     app.innerHTML=`<button class="btn quiet small" id="stopRev">Stop</button><section class="panel" style="margin-top:14px" id="drill"></section>`;
-    $('#stopRev').onclick=()=>{ cancelRecording(); save(); renderReview(); };
-    runDrills($('#drill'),items,state.srs,(right,totalN)=>{ addXP(right); $('#drill').innerHTML=`<h2>Review done</h2><p>${right} of ${totalN} right. +${right} XP.</p><div class="row"><button class="btn" data-go="home">Home</button><button class="btn ghost" id="backRev">Back to deck</button></div>`; $('#backRev').onclick=renderReview; }, (it,ok)=>{ grade(it.ru,ok); save(); });
+    $('#stopRev').onclick=()=>{ cancelRecording(); lsDel('govori-drill'); save(); renderReview(); };
+    runDrills($('#drill'),items,state.srs,(right,totalN)=>{ addXP(right); $('#drill').innerHTML=`<h2>Review done</h2><p>${right} of ${totalN} right. +${right} XP.</p><div class="row"><button class="btn" data-go="home">Home</button><button class="btn ghost" id="backRev">Back to deck</button></div>`; $('#backRev').onclick=renderReview; }, (it,ok)=>{ grade(it.ru,ok); save(); }, 'review');
     window.scrollTo(0,0);
   };
   const sr=$('#startRev'); if(sr) sr.onclick=()=>start(shuffle(due).slice(0,12));
   const pa=$('#practiceAny'); if(pa) pa.onclick=()=>start(shuffle(state.srs).slice(0,8));
+  const kept=lsGet('govori-drill',null); if(kept&&kept.ctx==='review') start([]);   // resume an unfinished review
 }
+
+/* Half-typed text in a form survives a reload. */
+function setDraft(k,v){ const d=lsGet('govori-drafts',{}); if(v) d[k]=String(v).slice(0,300); else delete d[k]; lsSet('govori-drafts',d); }
+function keepDraft(sel,k){ const el=$(sel); if(!el) return; const d=lsGet('govori-drafts',{}); if(typeof d[k]==='string'&&!el.value) el.value=d[k]; el.addEventListener('input',()=>setDraft(k,el.value)); }
 
 /* ============ Words: look up a word, see when to use it, say it back ============ */
 const unstress = s => String(s||'').replace(/́/g,'');
@@ -1651,7 +1763,8 @@ function renderWords(openId){
     <div class="row"><button class="btn" id="wGo" type="submit" ${has?'':'disabled'}>Translate</button><span class="muted" id="wStatus" style="font-size:15px"></span></div>
   </form>
   <section class="section" id="wResult"></section>
-  ${state.words.length?`<section class="section"><h2>Your words</h2><ul class="list">${state.words.map(w=>`<li><button class="item" data-wid="${w.id}" style="grid-template-columns:1fr auto"><span><span class="t" lang="ru">${esc(unstress(w.word.ru))}</span> <span class="tr">${esc(phon(w.word.ru))}</span><br><span class="s">${esc(w.input)}${w.sentenceIn?' · “'+esc(w.sentenceIn)+'”':''}</span></span><span class="tag ${w.said&&w.said.length?'done-tag':''}">${w.said&&w.said.length?'Said':'New'}</span></button></li>`).join('')}</ul></section>`:''}`;
+  ${state.words.length?`<section class="section"><h2>Your words</h2><ul class="list">${state.words.map(w=>`<li><button class="item" data-wid="${esc(w.id)}" style="grid-template-columns:1fr auto"><span><span class="t" lang="ru">${esc(unstress(w.word.ru))}</span> <span class="tr">${esc(phon(w.word.ru))}</span><br><span class="s">${esc(w.input)}${w.sentenceIn?' · “'+esc(w.sentenceIn)+'”':''}</span></span><span class="tag ${w.said&&w.said.length?'done-tag':''}">${w.said&&w.said.length?'Said':'New'}</span></button></li>`).join('')}</ul></section>`:''}`;
+  keepDraft('#wWord','w'); keepDraft('#wSent','ws');
   $('#wForm').onsubmit=e=>{ e.preventDefault(); lookUpWord($('#wWord').value.trim(), $('#wSent').value.trim()); };
   $$('[data-wid]').forEach(b=>b.onclick=()=>{ showWord(state.words.find(w=>w.id===b.dataset.wid)); $('#wResult').scrollIntoView({behavior:'smooth'}); });
   if(openId) showWord(state.words.find(w=>w.id===openId));
@@ -1677,6 +1790,7 @@ Reply with ONLY JSON:
       sentence:sentence&&r.sentence&&r.sentence.ru?{ru:String(r.sentence.ru),en:String(r.sentence.en||sentence)}:null,
       when:String(r.when||''), example:{ru:String(r.example.ru),en:String(r.example.en||'')}, said:[]};
     state.words.unshift(item); state.words=state.words.slice(0,100); save();
+    setDraft('w',''); setDraft('ws','');
     if((location.hash||'')==='#words') renderWords(item.id);
   }catch(e){
     if(e&&e.code==='cancelled') return;
@@ -1736,8 +1850,9 @@ function renderSaved(){
     const pool=list.filter(x=>x.en), box=$('#svDrill');
     box.hidden=false; box.className='section panel'; $('#svList').hidden=true; pr.parentElement.hidden=true;
     const items=buildItems(shuffle(pool).slice(0,8).map(x=>({ru:x.ru,en:x.en})), Math.min(10,Math.max(pool.length,4)));
-    runDrills(box, items, pool, (right,total)=>{ addXP(right); box.innerHTML=`<h2>Practice done</h2><p>${right} of ${total} right. +${right} XP.</p><button class="btn" id="svBack">Back to saved</button>`; $('#svBack').onclick=renderSaved; });
+    runDrills(box, items, pool, (right,total)=>{ addXP(right); box.innerHTML=`<h2>Practice done</h2><p>${right} of ${total} right. +${right} XP.</p><button class="btn" id="svBack">Back to saved</button>`; $('#svBack').onclick=renderSaved; }, null, 'saved');
   };
+  const kept=lsGet('govori-drill',null); if(pr&&kept&&kept.ctx==='saved') pr.onclick();
 }
 
 /* ============ Wisdom: Russian proverbs, idioms and sayings ============ */
@@ -1778,6 +1893,7 @@ function renderSayings(){
   </section>
   <div class="stack section" id="syList">${state.sayings.map((x,i)=>sayingCard(x,i)).join('')}</div>`;
   $$('#syKinds button').forEach(b=>b.onclick=()=>{ sayingsKind=b.dataset.k; $$('#syKinds button').forEach(x=>x.setAttribute('aria-pressed',String(x===b))); });
+  keepDraft('#syTopic','sy');
   $('#syGo').onclick=()=>getSayings($('#syTopic').value.trim());
   bindSayingMics();
 }
@@ -1812,6 +1928,12 @@ Reply with ONLY JSON: {"items":[{"ru":"the expression","literal":"word-for-word 
   }finally{ sayingsBusy=null; }
 }
 
+// Belt and braces: save again whenever the page is hidden or closed (switching apps, locking the phone, closing the tab).
+function saveAll(){ try{ localStorage.setItem('govori-state', JSON.stringify(state)); }catch(e){} persistSession(); }
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden') saveAll(); });
+window.addEventListener('pagehide',saveAll);
+
+session=restoreSession();
 updateChips();
 route();
 
